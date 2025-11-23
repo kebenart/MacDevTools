@@ -1,0 +1,142 @@
+package main
+
+import (
+	"embed"
+	"log"
+
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/menu"
+	"github.com/wailsapp/wails/v2/pkg/menu/keys"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+//go:embed all:frontend/dist
+var assets embed.FS
+
+func main() {
+	// Create an instance of the app structure
+	app := NewApp()
+
+	// Create application menu (macOS native)
+	appMenu := menu.NewMenu()
+
+	// 文件菜单
+	fileMenu := appMenu.AddSubmenu("文件")
+	fileMenu.AddText("新建文件", keys.CmdOrCtrl("n"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:new-file")
+	})
+	fileMenu.AddText("新建文件夹", keys.CmdOrCtrl("shift+n"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:new-folder")
+	})
+	fileMenu.AddSeparator()
+	fileMenu.AddText("保存", keys.CmdOrCtrl("s"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:save")
+	})
+	fileMenu.AddText("保存全部", keys.CmdOrCtrl("shift+s"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:save-all")
+	})
+	fileMenu.AddSeparator()
+	fileMenu.AddText("关闭标签", keys.CmdOrCtrl("w"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:close-tab")
+	})
+
+	// 编辑菜单 - 标准编辑操作使用 nil 回调让系统处理
+	editMenu := appMenu.AddSubmenu("编辑")
+	editMenu.AddText("撤销", keys.CmdOrCtrl("z"), nil)
+	editMenu.AddText("重做", keys.CmdOrCtrl("shift+z"), nil)
+	editMenu.AddSeparator()
+	editMenu.AddText("剪切", keys.CmdOrCtrl("x"), nil)
+	editMenu.AddText("复制", keys.CmdOrCtrl("c"), nil)
+	editMenu.AddText("粘贴", keys.CmdOrCtrl("v"), nil)
+	editMenu.AddText("全选", keys.CmdOrCtrl("a"), nil)
+	editMenu.AddSeparator()
+	editMenu.AddText("查找", keys.CmdOrCtrl("f"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:find")
+	})
+	editMenu.AddText("全局搜索", keys.CmdOrCtrl("shift+f"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:global-search")
+	})
+
+	// 视图菜单
+	viewMenu := appMenu.AddSubmenu("视图")
+	viewMenu.AddText("切换预览", keys.CmdOrCtrl("g"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:toggle-preview")
+	})
+	viewMenu.AddText("切换资源管理器", keys.CmdOrCtrl("b"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:toggle-explorer")
+	})
+
+	// 工具菜单
+	toolsMenu := appMenu.AddSubmenu("工具")
+	toolsMenu.AddText("JSON 工具", keys.CmdOrCtrl("1"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:switch-tool", "json")
+	})
+	toolsMenu.AddText("XML 工具", keys.CmdOrCtrl("2"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:switch-tool", "xml")
+	})
+	toolsMenu.AddText("Base64 工具", keys.CmdOrCtrl("3"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:switch-tool", "base64")
+	})
+	toolsMenu.AddText("HTTP 工具", keys.CmdOrCtrl("4"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:switch-tool", "http")
+	})
+
+	// 窗口菜单
+	windowMenu := appMenu.AddSubmenu("窗口")
+	windowMenu.AddText("最小化", keys.CmdOrCtrl("m"), func(_ *menu.CallbackData) {
+		runtime.WindowMinimise(app.ctx)
+	})
+	windowMenu.AddText("缩放", nil, func(_ *menu.CallbackData) {
+		runtime.WindowToggleMaximise(app.ctx)
+	})
+	windowMenu.AddSeparator()
+	windowMenu.AddText("设置", keys.CmdOrCtrl(","), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:settings")
+	})
+
+	// Create application with options
+	err := wails.Run(&options.App{
+		Title:  "MacDevTools",
+		Width:  1200,
+		Height: 800,
+		AssetServer: &assetserver.Options{
+			Assets: assets,
+		},
+		BackgroundColour: &options.RGBA{R: 30, G: 30, B: 30, A: 255},
+		OnStartup:        app.startup,
+		Menu:             appMenu,
+		Bind: []interface{}{
+			app,
+		},
+
+		// ======== macOS Native Configuration (CRITICAL) ========
+		Mac: &mac.Options{
+			// Hide title bar but keep traffic lights (red/yellow/green buttons)
+			// Content extends under the title bar area
+			TitleBar: mac.TitleBarHiddenInset(),
+
+			// Enable window translucency for backdrop effects
+			WindowIsTranslucent: true,
+
+			// Make webview background transparent
+			WebviewIsTransparent: true,
+
+			// About info in native menu
+			About: &mac.AboutInfo{
+				Title:   "MacDevTools",
+				Message: "A high-performance developer toolkit built with Wails and React.\n\nVersion: 1.0.0\nAuthor: Wails Developer\nLicense: MIT",
+				Icon:    nil, // You can embed an icon here
+			},
+
+			// Appearance: auto-adapt to system theme
+			Appearance: mac.NSAppearanceNameDarkAqua,
+		},
+	})
+
+	if err != nil {
+		log.Fatal("Error:", err.Error())
+	}
+}

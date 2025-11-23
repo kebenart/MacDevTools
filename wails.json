@@ -1,0 +1,32 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "MacDevTools",
+  "outputfilename": "MacDevTools",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "http://localhost:5173",
+  "author": {
+    "name": "Wails Developer",
+    "email": "developer@wails.io"
+  },
+  "info": {
+    "companyName": "Wails",
+    "productName": "MacDevTools",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2024",
+    "comments": "A high-performance developer toolkit for macOS"
+  },
+  "wailsjsdir": "./frontend/src",
+  "version": "2",
+  "debounceMS": 100,
+  "devServer": "localhost:34115",
+  "appargs": "",
+  "runNonNativeBuildScript": false,
+  "preBuildHooks": {
+    "darwin/universal": ""
+  },
+  "postBuildHooks": {
+    "darwin/universal": ""
+  }
+}

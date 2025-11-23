@@ -1,0 +1,43 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+MacDevTools
+macdevtools
+
+# Build directories
+build/
+dist/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Wails auto-generated files
+frontend/src/wailsjs/
+
+# Go
+*.sum
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# Test coverage
+*.out
+coverage/

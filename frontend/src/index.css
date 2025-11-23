@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Dark mode colors (default) */
+    --macos-bg: #1e1e1e;
+    --macos-sidebar: rgba(51, 51, 51, 0.8);
+    --macos-explorer: #252526;
+    --macos-border: #333333;
+    --macos-accent: #0e639c;
+    --macos-tab-active: #1e1e1e;
+    --macos-tab-inactive: #2d2d2d;
+    --macos-item-hover: #2a2d2e;
+    --macos-item-active: #37373d;
+    --macos-text-main: #cccccc;
+    --macos-text-sub: #858585;
+    --macos-input: #3c3c3c;
+    --macos-error: #f14c4c;
+  }
+
+  .light {
+    /* Light mode colors */
+    --macos-bg: #ffffff;
+    --macos-sidebar: rgba(232, 232, 232, 0.8);
+    --macos-explorer: #f3f3f3;
+    --macos-border: #e0e0e0;
+    --macos-accent: #007acc;
+    --macos-tab-active: #ffffff;
+    --macos-tab-inactive: #ececec;
+    --macos-item-hover: #e4e6f1;
+    --macos-item-active: #d4d4d4;
+    --macos-text-main: #333333;
+    --macos-text-sub: #666666;
+    --macos-input: #f0f0f0;
+    --macos-error: #f14c4c;
+  }
+
+  * {
+    @apply box-border m-0 p-0;
+    user-select: none;
+  }
+
+  body {
+    @apply font-macos overflow-hidden;
+    color: var(--macos-text-main);
+    background: var(--macos-bg);
+    font-size: 13px;
+    height: 100vh;
+  }
+
+  /* Custom scrollbar for macOS */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.3);
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(128, 128, 128, 0.5);
+  }
+}
+
+@layer utilities {
+  /* Wails draggable region */
+  .draggable {
+    --wails-draggable: drag;
+  }
+
+  .non-draggable {
+    --wails-draggable: no-drag;
+  }
+
+  /* macOS backdrop blur effect */
+  .backdrop-macos {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Toast animation */
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

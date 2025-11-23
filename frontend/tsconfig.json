@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    // Target modern browsers
+    "target": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+
+    // Module settings for Vite
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+
+    // JSX settings for React
+    "jsx": "react-jsx",
+
+    // Interop settings
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+
+    // Type checking strictness
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    // Additional type checking
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+
+    // Build settings
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+
+    // Other
+    "moduleDetection": "force"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
