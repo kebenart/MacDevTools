@@ -27,6 +27,8 @@ function Toolbar() {
     setLoading,
     formatActiveFile,
     editorRef,
+    setHTTPResponse,
+    saveFile,
   } = useAppStore()
   const { t } = useTranslation()
 
@@ -163,6 +165,7 @@ function Toolbar() {
     const body = lines.slice(bodyStart).join('\n')
 
     try {
+      setLoading(true)
       const response = await SendHTTPRequest({
         method: method || 'GET',
         url,
@@ -170,17 +173,47 @@ function Toolbar() {
         body,
       })
 
+      // Save response to store for preview
+      setHTTPResponse(activeFileId, response)
+
       if (response.error) {
         showToast(response.error, 'error')
       } else {
-        // Show response status and truncated body
-        const bodyPreview = response.body.length > 500
-          ? response.body.substring(0, 500) + '...(truncated)'
-          : response.body
-        showToast(`Status: ${response.status}\n\n${bodyPreview}`, 'success')
+        // Show response status in toast
+        const durationText = response.duration ? `${response.duration}ms` : ''
+        showToast(`Status: ${response.status} ${response.statusCode} ${durationText}`, 'success')
+        // Ensure preview is visible to show response
+        if (!isPreviewVisible) {
+          togglePreview()
+        }
+      }
+      
+      // Auto-save after receiving response (force save even if not dirty)
+      try {
+        await saveFile(activeFileId, true)
+      } catch (error) {
+        console.error('Auto-save failed:', error)
       }
     } catch (err) {
       showToast(`Request failed: ${err}`, 'error')
+      // Save error response
+      setHTTPResponse(activeFileId, {
+        error: `Request failed: ${err}`,
+        status: 'Error',
+        statusCode: 0,
+        headers: {},
+        body: '',
+        duration: 0,
+      })
+      
+      // Auto-save even on error (force save even if not dirty)
+      try {
+        await saveFile(activeFileId, true)
+      } catch (error) {
+        console.error('Auto-save failed:', error)
+      }
+    } finally {
+      setLoading(false)
     }
   }
 

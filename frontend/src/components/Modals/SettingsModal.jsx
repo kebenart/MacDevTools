@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../constants/translations'
-import { X, RotateCcw, Edit2, Save, Folder, ExternalLink } from 'lucide-react'
+import { X, RotateCcw, Edit2, Save, Folder, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
 import { OpenFileDialog, SaveFileDialog } from '../../wailsjs/go/main/App'
 import { shortcutActions, formatShortcut, getShortcutText } from '../../constants/translations'
 
@@ -38,6 +38,7 @@ function SettingsModal() {
 
   const [editingShortcut, setEditingShortcut] = useState(null)
   const [tempShortcut, setTempShortcut] = useState({})
+  const [shortcutsExpanded, setShortcutsExpanded] = useState(false) // 默认折叠
 
   // 处理快捷键编辑
   const startEditShortcut = (action) => {
@@ -52,12 +53,18 @@ function SettingsModal() {
 
   const handleKeyDown = (e) => {
     e.preventDefault()
+    
+    // Skip modifier keys only (don't set key if only modifiers are pressed)
+    if (['Control', 'Meta', 'Alt', 'Shift', 'Command', 'Cmd'].includes(e.key)) {
+      return
+    }
+    
     const newShortcut = {
       ctrlKey: e.ctrlKey,
       shiftKey: e.shiftKey,
       altKey: e.altKey,
       metaKey: e.metaKey,
-      key: e.key === ' ' ? 'Space' : e.key,
+      key: e.key === ' ' ? 'Space' : (e.key || ''),
     }
     setTempShortcut(newShortcut)
   }
@@ -291,20 +298,32 @@ function SettingsModal() {
           {/* Shortcuts */}
           <div className="border-t border-macos-border pt-5">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-xs font-bold text-macos-text-sub uppercase tracking-wider">
-                {t('settings.shortcuts')}
-              </div>
               <button
-                onClick={resetShortcuts}
-                className="flex items-center gap-1 px-3 py-1 bg-macos-item-hover text-macos-text-sub rounded text-xs hover:bg-macos-item-active hover:text-macos-text-main"
+                onClick={() => setShortcutsExpanded(!shortcutsExpanded)}
+                className="flex items-center gap-2 text-xs font-bold text-macos-text-sub uppercase tracking-wider hover:text-macos-text-main transition-colors"
               >
-                <RotateCcw size={12} />
-                重置全部
+                {shortcutsExpanded ? (
+                  <ChevronUp size={14} />
+                ) : (
+                  <ChevronDown size={14} />
+                )}
+                {t('settings.shortcuts')}
               </button>
+              {shortcutsExpanded && (
+                <button
+                  onClick={resetShortcuts}
+                  className="flex items-center gap-1 px-3 py-1 bg-macos-item-hover text-macos-text-sub rounded text-xs hover:bg-macos-item-active hover:text-macos-text-main"
+                >
+                  <RotateCcw size={12} />
+                  重置全部
+                </button>
+              )}
             </div>
-            <div className="space-y-2">
-              {renderShortcuts()}
-            </div>
+            {shortcutsExpanded && (
+              <div className="space-y-2">
+                {renderShortcuts()}
+              </div>
+            )}
           </div>
 
           {/* Data Management */}
@@ -341,7 +360,7 @@ function SettingsModal() {
             <div className="text-sm text-macos-text-main space-y-1">
               <div className="font-bold">{t('settings.appName')}</div>
               <div className="text-xs text-macos-text-sub">{t('settings.version')}: 1.0.0 (Beta)</div>
-              <div className="text-xs text-macos-text-sub">{t('settings.author')}: Wails Developer</div>
+              <div className="text-xs text-macos-text-sub">{t('settings.author')}: Keben</div>
               <div className="text-xs text-macos-text-sub">{t('settings.license')}: MIT</div>
               <div className="text-xs text-macos-text-sub mt-2 leading-relaxed">
                 {t('settings.description')}

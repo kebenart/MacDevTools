@@ -451,14 +451,19 @@ type HTTPResponse struct {
 	Headers    map[string]string `json:"headers"`
 	Body       string            `json:"body"`
 	Error      string            `json:"error"`
+	Duration   int64             `json:"duration"` // Duration in milliseconds
 }
 
 // SendHTTPRequest sends HTTP request and returns response
 func (a *App) SendHTTPRequest(request HTTPRequest) HTTPResponse {
+	// Record start time
+	startTime := time.Now()
+	
 	// Validate URL
 	if request.URL == "" {
 		return HTTPResponse{
-			Error: "URL is required",
+			Error:    "URL is required",
+			Duration: 0,
 		}
 	}
 
@@ -470,8 +475,10 @@ func (a *App) SendHTTPRequest(request HTTPRequest) HTTPResponse {
 	// Create request
 	req, err := http.NewRequest(request.Method, request.URL, strings.NewReader(request.Body))
 	if err != nil {
+		duration := time.Since(startTime).Milliseconds()
 		return HTTPResponse{
-			Error: fmt.Sprintf("Invalid request: %v", err),
+			Error:    fmt.Sprintf("Invalid request: %v", err),
+			Duration: duration,
 		}
 	}
 
@@ -482,26 +489,32 @@ func (a *App) SendHTTPRequest(request HTTPRequest) HTTPResponse {
 
 	// Send request
 	resp, err := client.Do(req)
+	duration := time.Since(startTime).Milliseconds()
+	
 	if err != nil {
 		// Provide more specific error messages
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "timeout") {
 			return HTTPResponse{
-				Error: "Request timeout: server did not respond within 30 seconds",
+				Error:    "Request timeout: server did not respond within 30 seconds",
+				Duration: duration,
 			}
 		}
 		if strings.Contains(errMsg, "connection refused") {
 			return HTTPResponse{
-				Error: fmt.Sprintf("Connection refused: unable to connect to %s", request.URL),
+				Error:    fmt.Sprintf("Connection refused: unable to connect to %s", request.URL),
+				Duration: duration,
 			}
 		}
 		if strings.Contains(errMsg, "no such host") {
 			return HTTPResponse{
-				Error: fmt.Sprintf("DNS error: host not found for %s", request.URL),
+				Error:    fmt.Sprintf("DNS error: host not found for %s", request.URL),
+				Duration: duration,
 			}
 		}
 		return HTTPResponse{
-			Error: fmt.Sprintf("Request failed: %v", err),
+			Error:    fmt.Sprintf("Request failed: %v", err),
+			Duration: duration,
 		}
 	}
 	defer resp.Body.Close()
@@ -513,14 +526,16 @@ func (a *App) SendHTTPRequest(request HTTPRequest) HTTPResponse {
 	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return HTTPResponse{
-			Error: fmt.Sprintf("Failed to read response: %v", err),
+			Error:    fmt.Sprintf("Failed to read response: %v", err),
+			Duration: duration,
 		}
 	}
 
 	// Check if response was truncated
 	if len(body) == maxBodySize {
 		return HTTPResponse{
-			Error: "Response body exceeds 10MB limit and was truncated",
+			Error:    "Response body exceeds 10MB limit and was truncated",
+			Duration: duration,
 		}
 	}
 
@@ -536,6 +551,7 @@ func (a *App) SendHTTPRequest(request HTTPRequest) HTTPResponse {
 		Headers:    headers,
 		Body:       string(body),
 		Error:      "",
+		Duration:   duration,
 	}
 }
 
@@ -547,7 +563,7 @@ func (a *App) GetSystemInfo() map[string]string {
 		"version":   "1.0.0",
 		"platform":  "macOS",
 		"goVersion": "1.21+",
-		"author":    "Wails Developer",
+		"author":    "Keben",
 		"license":   "MIT",
 	}
 }

@@ -7,11 +7,11 @@
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "http://localhost:5173",
   "author": {
-    "name": "Wails Developer",
-    "email": "developer@wails.io"
+    "name": "Keben",
+    "email": "kebena@qq.com"
   },
   "info": {
-    "companyName": "Wails",
+    "companyName": "Keben",
     "productName": "MacDevTools",
     "productVersion": "1.0.0",
     "copyright": "Copyright © 2024",

@@ -137,7 +137,7 @@ func main() {
 			WebviewIsTransparent: true,
 			About: &mac.AboutInfo{
 				Title:   "MacDevTools",
-				Message: "A high-performance developer toolkit built with Wails and React.\n\nVersion: 1.0.0\nAuthor: Wails Developer\nLicense: MIT",
+				Message: "A high-performance developer toolkit built with Wails and React.\n\nVersion: 1.0.0\nAuthor: Keben\nLicense: MIT",
 				Icon:    nil,
 			},
 			Appearance: mac.NSAppearanceNameDarkAqua,

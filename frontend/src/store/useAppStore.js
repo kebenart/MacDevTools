@@ -19,6 +19,9 @@ export const useAppStore = create((set, get) => ({
   // File content cache (id -> content)
   fileContents: {},
 
+  // HTTP responses cache (fileId -> HTTPResponse)
+  httpResponses: {},
+
   // Active file ID
   activeFileId: null,
 
@@ -58,7 +61,7 @@ export const useAppStore = create((set, get) => ({
   language: 'zh',
 
   // Settings
-  autoSave: false,
+  autoSave: true,
 
   // Shortcuts
   shortcuts: defaultShortcuts,
@@ -184,11 +187,36 @@ export const useAppStore = create((set, get) => ({
       try {
         const result = await App.ReadFileContent(file.path)
         if (result.success) {
+          let content = result.data
+          let response = null
+          
+          // For HTTP tool, try to parse JSON format with request and response
+          if (tool === 'http') {
+            try {
+              const parsed = JSON.parse(result.data)
+              if (parsed.request && parsed.response) {
+                // This is a saved HTTP file with response
+                content = parsed.request
+                response = parsed.response
+              }
+            } catch {
+              // Not JSON format, treat as plain text (old format or new request)
+              content = result.data
+            }
+          }
+          
           set((state) => ({
             fileContents: {
               ...state.fileContents,
-              [fileId]: { content: result.data, dirty: false, path: file.path },
+              [fileId]: { content, dirty: false, path: file.path },
             },
+            // Restore HTTP response if exists
+            ...(response && {
+              httpResponses: {
+                ...state.httpResponses,
+                [fileId]: response,
+              },
+            }),
           }))
         }
       } catch (error) {
@@ -268,7 +296,14 @@ export const useAppStore = create((set, get) => ({
 
       const newContents = { ...state.fileContents }
       delete newContents[fileId]
-      return { openTabs: newTabs, activeFileId: newActiveId, fileContents: newContents }
+      const newHttpResponses = { ...state.httpResponses }
+      delete newHttpResponses[fileId]
+      return { 
+        openTabs: newTabs, 
+        activeFileId: newActiveId, 
+        fileContents: newContents,
+        httpResponses: newHttpResponses,
+      }
     })
   },
 
@@ -287,7 +322,7 @@ export const useAppStore = create((set, get) => ({
       await get().saveFile(fileId)
     }
 
-    set({ openTabs: [], activeFileId: null, fileContents: {} })
+    set({ openTabs: [], activeFileId: null, fileContents: {}, httpResponses: {} })
   },
 
   // 关闭其他标签页
@@ -390,7 +425,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   updateFileContent: (fileId, content) => {
-    const { autoSave, fileContents } = get()
+    const { autoSave, fileContents, httpResponses, currentTool } = get()
 
     set((state) => ({
       fileContents: {
@@ -405,7 +440,22 @@ export const useAppStore = create((set, get) => ({
 
     // Auto save if enabled
     if (autoSave && fileContents[fileId]?.path) {
-      App.SaveFileContent(fileContents[fileId].path, content)
+      let contentToSave = content
+      
+      // For HTTP tool, save request and response together as JSON
+      if (currentTool === 'http') {
+        const response = httpResponses[fileId]
+        if (response) {
+          // Save as JSON format with both request and response
+          const httpData = {
+            request: content,
+            response: response,
+          }
+          contentToSave = JSON.stringify(httpData, null, 2)
+        }
+      }
+      
+      App.SaveFileContent(fileContents[fileId].path, contentToSave)
     }
   },
 
@@ -533,14 +583,35 @@ export const useAppStore = create((set, get) => ({
     })
   },
 
-  saveFile: async (fileId) => {
-    const { fileContents } = get()
+  saveFile: async (fileId, force = false) => {
+    const { fileContents, httpResponses, currentTool } = get()
     const fileData = fileContents[fileId]
 
-    if (!fileData || !fileData.dirty) return
+    if (!fileData) return
+    
+    // For HTTP tool, always save if there's a response (even if not dirty)
+    // For other tools, only save if dirty (unless forced)
+    const shouldSave = force || fileData.dirty || (currentTool === 'http' && httpResponses[fileId])
+    
+    if (!shouldSave) return
 
     try {
-      const result = await App.SaveFileContent(fileData.path, fileData.content)
+      let contentToSave = fileData.content
+      
+      // For HTTP tool, save request and response together as JSON
+      if (currentTool === 'http') {
+        const response = httpResponses[fileId]
+        if (response) {
+          // Save as JSON format with both request and response
+          const httpData = {
+            request: fileData.content,
+            response: response,
+          }
+          contentToSave = JSON.stringify(httpData, null, 2)
+        }
+      }
+      
+      const result = await App.SaveFileContent(fileData.path, contentToSave)
       if (result.success) {
         set((state) => ({
           fileContents: {
@@ -548,25 +619,58 @@ export const useAppStore = create((set, get) => ({
             [fileId]: { ...state.fileContents[fileId], dirty: false },
           },
         }))
-        get().showToast('文件已保存', 'success')
+        // Only show toast if not auto-saving (force flag indicates auto-save)
+        if (!force) {
+          get().showToast('文件已保存', 'success')
+        }
       } else {
-        get().showToast(result.error, 'error')
+        if (!force) {
+          get().showToast(result.error, 'error')
+        }
       }
     } catch (error) {
-      get().showToast('保存失败', 'error')
+      if (!force) {
+        get().showToast('保存失败', 'error')
+      }
     }
   },
 
   saveAllFiles: async () => {
-    const { fileContents } = get()
+    const { fileContents, httpResponses, openTabs } = get()
     let savedCount = 0
 
     for (const [fileId, fileData] of Object.entries(fileContents)) {
       if (fileData.dirty) {
         try {
-          const result = await App.SaveFileContent(fileData.path, fileData.content)
+          // Determine tool type from openTabs
+          const tab = openTabs.find(t => t.id === fileId)
+          const toolType = tab?.toolType || get().currentTool
+          
+          let contentToSave = fileData.content
+          
+          // For HTTP tool, save request and response together as JSON
+          if (toolType === 'http') {
+            const response = httpResponses[fileId]
+            if (response) {
+              // Save as JSON format with both request and response
+              const httpData = {
+                request: fileData.content,
+                response: response,
+              }
+              contentToSave = JSON.stringify(httpData, null, 2)
+            }
+          }
+          
+          const result = await App.SaveFileContent(fileData.path, contentToSave)
           if (result.success) {
             savedCount++
+            // Mark as not dirty
+            set((state) => ({
+              fileContents: {
+                ...state.fileContents,
+                [fileId]: { ...state.fileContents[fileId], dirty: false },
+              },
+            }))
           }
         } catch (error) {
           console.error('Failed to save file:', error)
@@ -733,6 +837,19 @@ export const useAppStore = create((set, get) => ({
   // Loading actions
   setLoading: (loading) => set({ isLoading: loading }),
 
+  // HTTP response actions
+  setHTTPResponse: (fileId, response) => {
+    set((state) => ({
+      httpResponses: {
+        ...state.httpResponses,
+        [fileId]: response,
+      },
+    }))
+  },
+  getHTTPResponse: (fileId) => {
+    return get().httpResponses[fileId] || null
+  },
+
   // Theme
   toggleTheme: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
 
@@ -825,7 +942,7 @@ export const useAppStore = create((set, get) => ({
   importBackup: (data) => {
     try {
       const imported = JSON.parse(data)
-      let newSettings = { theme: 'dark', language: 'zh', autoSave: false }
+      let newSettings = { theme: 'dark', language: 'zh', autoSave: true }
       let newShortcuts = defaultShortcuts
 
       if (imported.settings) {

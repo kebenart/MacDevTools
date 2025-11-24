@@ -126,6 +126,151 @@ A high-performance developer toolkit built with Wails and React, designed to pro
 
 ---
 
+## 📖 HTTP Tool Usage Examples
+
+The HTTP tool allows you to send various HTTP requests and view responses. The request format is similar to raw HTTP request format.
+
+### **Request Format**
+
+HTTP requests follow this format:
+
+```
+METHOD URL HTTP/1.1
+Header-Name: Header-Value
+Another-Header: Another-Value
+
+Request Body (optional)
+```
+
+### **Example 1: GET Request**
+
+```http
+GET https://api.github.com/users/octocat HTTP/1.1
+Accept: application/json
+User-Agent: MacDevTools/1.0
+```
+
+**Notes:**
+- First line: `GET` is the method, followed by the full URL
+- Subsequent lines: Request headers, one per line, format: `Key: Value`
+- Request body follows after a blank line (GET requests usually don't have a body)
+
+### **Example 2: POST Request (with JSON body)**
+
+```http
+POST https://api.example.com/users HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer your-token-here
+
+{
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+```
+
+**Notes:**
+- Use `POST` method
+- Set `Content-Type` to `application/json`
+- Add `Authorization` header
+- JSON body follows after blank line
+
+### **Example 3: Using Relative Path with Host Header**
+
+```http
+GET /api/v1/users HTTP/1.1
+Host: api.example.com
+Accept: application/json
+```
+
+**Notes:**
+- If URL is not a full path, you can use relative path `/api/v1/users`
+- Specify server address via `Host` header
+- Tool will automatically combine to `http://api.example.com/api/v1/users`
+
+### **Example 4: PUT Request (Update Resource)**
+
+```http
+PUT https://api.example.com/users/123 HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer your-token-here
+
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com"
+}
+```
+
+### **Example 5: DELETE Request**
+
+```http
+DELETE https://api.example.com/users/123 HTTP/1.1
+Authorization: Bearer your-token-here
+```
+
+### **Usage Steps**
+
+1. **Create HTTP File**
+   - Switch to HTTP tool (`Cmd+4` or click sidebar)
+   - Create new file (`Cmd+N`) or open existing file
+
+2. **Write Request**
+   - Enter HTTP request content in the editor
+   - Syntax highlighting and autocomplete supported (typing `GET`, `POST`, etc. will show suggestions)
+
+3. **Send Request**
+   - Click the "Send" button in the toolbar
+   - Or use keyboard shortcut (if configured)
+
+4. **View Response**
+   - Response will automatically appear in the preview panel on the right
+   - Response format includes:
+     - Status line (HTTP/1.1 Status Code Status Text)
+     - Response headers
+     - Response body
+   - Supports syntax highlighting, code folding, and right-click copy
+
+### **Response Preview**
+
+After sending a request, the preview panel shows formatted response:
+
+```
+HTTP/1.1 200 OK
+
+Content-Type: application/json
+Content-Length: 1234
+Date: Mon, 01 Jan 2024 12:00:00 GMT
+
+{
+  "id": 123,
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+```
+
+### **Supported HTTP Methods**
+
+- `GET` - Retrieve resource
+- `POST` - Create resource
+- `PUT` - Update resource (full replacement)
+- `PATCH` - Partial update resource
+- `DELETE` - Delete resource
+- `HEAD` - Get response headers (no body)
+- `OPTIONS` - Get supported methods
+- `TRACE` - Echo server request
+- `CONNECT` - Establish tunnel connection
+
+### **Tips & Tricks**
+
+1. **Autocomplete**: Automatic suggestions when typing HTTP methods or common headers
+2. **Syntax Highlighting**: HTTP methods, URLs, headers have different colors
+3. **Code Folding**: Can fold request body sections for easier viewing
+4. **Right-click Copy**: Right-click in preview panel to copy response content
+5. **Error Handling**: If request fails, error message appears in preview panel
+6. **Timeout**: Request timeout is 30 seconds
+7. **Response Size Limit**: Response body max size is 10MB, larger responses will be truncated
+
+---
+
 ## ⌨️ Keyboard Shortcuts
 
 | Shortcut | Action |

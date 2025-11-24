@@ -1,203 +1,189 @@
-import * as monaco from 'monaco-editor'
-
 /**
  * Register HTTP language for Monaco Editor
  * Provides syntax highlighting and autocomplete for HTTP requests
+ * @param {Object} monaco - The monaco instance from the editor
  */
-export function registerHTTPLanguage() {
-  // Register language
-  monaco.languages.register({ id: 'http' })
+export function registerHTTPLanguage(monaco) {
+  // 验证 monaco 对象是否存在
+  if (!monaco || !monaco.languages) {
+    console.warn('Monaco instance is not available yet')
+    return
+  }
+  
+  // 检查是否已经注册过，防止重复注册报错
+  const languages = monaco.languages.getLanguages();
+  const isRegistered = languages.some(lang => lang.id === 'http');
 
-  // Define syntax highlighting
-  monaco.languages.setMonarchTokensProvider('http', {
-    tokenizer: {
-      root: [
-        // HTTP Methods
-        [/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|TRACE|CONNECT)\b/, 'keyword.method'],
+  if (!isRegistered) {
+    // Register language
+    monaco.languages.register({ id: 'http' })
 
-        // HTTP Version
-        [/HTTP\/\d\.\d/, 'keyword.version'],
+    // Define syntax highlighting
+    monaco.languages.setMonarchTokensProvider('http', {
+      tokenizer: {
+        root: [
+          // HTTP Methods
+          [/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|TRACE|CONNECT)\b/, 'keyword.method'],
 
-        // Header names
-        [/^[A-Za-z-]+(?=:)/, 'variable.header'],
+          // HTTP Version
+          [/HTTP\/\d\.\d/, 'keyword.version'],
 
-        // URLs
-        [/(https?:\/\/[^\s]+)/, 'string.url'],
-        [/\/[^\s]*/, 'string.path'],
+          // Header names
+          [/^[A-Za-z-]+(?=:)/, 'variable.header'],
 
-        // JSON in body
-        [/\{/, { token: 'delimiter.bracket', next: '@json' }],
-        [/\[/, { token: 'delimiter.bracket', next: '@json' }],
+          // URLs
+          [/(https?:\/\/[^\s]+)/, 'string.url'],
+          [/\/[^\s]*/, 'string.path'],
 
-        // Strings
-        [/"([^"\\]|\\.)*$/, 'string.invalid'],
-        [/"/, { token: 'string.quote', next: '@string' }],
+          // JSON in body
+          [/\{/, { token: 'delimiter.bracket', next: '@json' }],
+          [/\[/, { token: 'delimiter.bracket', next: '@json' }],
 
-        // Numbers
-        [/\d+/, 'number'],
+          // Strings
+          [/"([^"\\]|\\.)*$/, 'string.invalid'],
+          [/"/, { token: 'string.quote', next: '@string' }],
 
-        // Comments
-        [/#.*$/, 'comment'],
-      ],
+          // Numbers
+          [/\d+/, 'number'],
 
-      json: [
-        [/\}/, { token: 'delimiter.bracket', next: '@pop' }],
-        [/\]/, { token: 'delimiter.bracket', next: '@pop' }],
-        [/"([^"\\]|\\.)*"/, 'string'],
-        [/\d+/, 'number'],
-        [/(true|false|null)/, 'keyword'],
-        [/[,:]/, 'delimiter'],
-      ],
+          // Comments
+          [/#.*$/, 'comment'],
+        ],
 
-      string: [
-        [/[^\\"]+/, 'string'],
-        [/"/, { token: 'string.quote', next: '@pop' }],
-      ],
-    },
-  })
+        json: [
+          [/\}/, { token: 'delimiter.bracket', next: '@pop' }],
+          [/\]/, { token: 'delimiter.bracket', next: '@pop' }],
+          [/"([^"\\]|\\.)*"/, 'string'],
+          [/\d+/, 'number'],
+          [/(true|false|null)/, 'keyword'],
+          [/[,:]/, 'delimiter'],
+        ],
 
-  // Define theme colors for HTTP
-  // Note: These themes must be defined before they are used
-  try {
-    monaco.editor.defineTheme('http-dark', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [
-        { token: 'keyword.method', foreground: 'D16969', fontStyle: 'bold' },
-        { token: 'keyword.version', foreground: '569CD6' },
-        { token: 'variable.header', foreground: '9CDCFE' },
-        { token: 'string.url', foreground: 'CE9178' },
-        { token: 'string.path', foreground: 'CE9178' },
-        { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
-      ],
-      colors: {
-        'editor.background': '#1E1E1E',
-        'editor.foreground': '#D4D4D4',
-        'editorLineNumber.foreground': '#858585',
-        'editor.selectionBackground': '#264F78',
-        'editor.lineHighlightBackground': '#2A2D2E',
-        'editorCursor.foreground': '#AEAFAD',
-        'editorWhitespace.foreground': '#3B3A32',
-        'editorIndentGuide.background': '#404040',
-        'editorIndentGuide.activeBackground': '#707070',
+        string: [
+          [/[^\\"]+/, 'string'],
+          [/"/, { token: 'string.quote', next: '@pop' }],
+        ],
       },
     })
 
-    monaco.editor.defineTheme('http-light', {
-      base: 'vs',
-      inherit: true,
-      rules: [
-        { token: 'keyword.method', foreground: 'D16969', fontStyle: 'bold' },
-        { token: 'keyword.version', foreground: '0000FF' },
-        { token: 'variable.header', foreground: '0451A5' },
-        { token: 'string.url', foreground: 'A31515' },
-        { token: 'string.path', foreground: 'A31515' },
-        { token: 'comment', foreground: '008000', fontStyle: 'italic' },
-      ],
-      colors: {
-        'editor.background': '#FFFFFF',
-        'editor.foreground': '#000000',
-        'editorLineNumber.foreground': '#237893',
-        'editor.selectionBackground': '#ADD6FF',
-        'editor.lineHighlightBackground': '#F0F0F0',
-        'editorCursor.foreground': '#000000',
-        'editorWhitespace.foreground': '#BFBFBF',
-        'editorIndentGuide.background': '#D3D3D3',
-        'editorIndentGuide.activeBackground': '#939393',
+    // Define autocomplete suggestions
+    monaco.languages.registerCompletionItemProvider('http', {
+      provideCompletionItems: (model, position) => {
+        const word = model.getWordUntilPosition(position)
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        }
+
+        const suggestions = [
+          // HTTP Methods
+          {
+            label: 'GET',
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: 'GET ${1:/path} HTTP/1.1',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'GET request',
+            range: range,
+          },
+          {
+            label: 'POST',
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: 'POST ${1:/path} HTTP/1.1\nContent-Type: application/json\n\n{\n\t$0\n}',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'POST request with JSON body',
+            range: range,
+          },
+          {
+            label: 'PUT',
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: 'PUT ${1:/path} HTTP/1.1\nContent-Type: application/json\n\n{\n\t$0\n}',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'PUT request',
+            range: range,
+          },
+          {
+            label: 'DELETE',
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: 'DELETE ${1:/path} HTTP/1.1',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'DELETE request',
+            range: range,
+          },
+          {
+            label: 'PATCH',
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: 'PATCH ${1:/path} HTTP/1.1\nContent-Type: application/json\n\n{\n\t$0\n}',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'PATCH request',
+            range: range,
+          },
+
+          // Common Headers
+          {
+            label: 'Content-Type: application/json',
+            kind: monaco.languages.CompletionItemKind.Property,
+            insertText: 'Content-Type: application/json',
+            documentation: 'JSON content type header',
+            range: range,
+          },
+          {
+            label: 'Authorization: Bearer',
+            kind: monaco.languages.CompletionItemKind.Property,
+            insertText: 'Authorization: Bearer ${1:token}',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'Bearer token authorization',
+            range: range,
+          },
+          {
+            label: 'Accept: application/json',
+            kind: monaco.languages.CompletionItemKind.Property,
+            insertText: 'Accept: application/json',
+            documentation: 'Accept JSON response',
+            range: range,
+          },
+          {
+            label: 'User-Agent',
+            kind: monaco.languages.CompletionItemKind.Property,
+            insertText: 'User-Agent: ${1:MyApp/1.0}',
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            documentation: 'User agent header',
+            range: range,
+          },
+        ]
+
+        return { suggestions: suggestions }
       },
     })
-  } catch (error) {
-    console.warn('Failed to define HTTP themes:', error)
   }
 
-  // Define autocomplete suggestions
-  monaco.languages.registerCompletionItemProvider('http', {
-    provideCompletionItems: (model, position) => {
-      const word = model.getWordUntilPosition(position)
-      const range = {
-        startLineNumber: position.lineNumber,
-        endLineNumber: position.lineNumber,
-        startColumn: word.startColumn,
-        endColumn: word.endColumn,
-      }
+  // Define theme colors for HTTP (Safe to redefine)
+  monaco.editor.defineTheme('http-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'keyword.method', foreground: 'D16969', fontStyle: 'bold' },
+      { token: 'keyword.version', foreground: '569CD6' },
+      { token: 'variable.header', foreground: '9CDCFE' },
+      { token: 'string.url', foreground: 'CE9178' },
+      { token: 'string.path', foreground: 'CE9178' },
+      { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
+    ],
+    colors: {},
+  })
 
-      const suggestions = [
-        // HTTP Methods
-        {
-          label: 'GET',
-          kind: monaco.languages.CompletionItemKind.Keyword,
-          insertText: 'GET ${1:/path} HTTP/1.1',
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          documentation: 'GET request',
-          range: range,
-        },
-        {
-          label: 'POST',
-          kind: monaco.languages.CompletionItemKind.Keyword,
-          insertText: 'POST ${1:/path} HTTP/1.1\nContent-Type: application/json\n\n{\n\t$0\n}',
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          documentation: 'POST request with JSON body',
-          range: range,
-        },
-        {
-          label: 'PUT',
-          kind: monaco.languages.CompletionItemKind.Keyword,
-          insertText: 'PUT ${1:/path} HTTP/1.1\nContent-Type: application/json\n\n{\n\t$0\n}',
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          documentation: 'PUT request',
-          range: range,
-        },
-        {
-          label: 'DELETE',
-          kind: monaco.languages.CompletionItemKind.Keyword,
-          insertText: 'DELETE ${1:/path} HTTP/1.1',
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          documentation: 'DELETE request',
-          range: range,
-        },
-        {
-          label: 'PATCH',
-          kind: monaco.languages.CompletionItemKind.Keyword,
-          insertText: 'PATCH ${1:/path} HTTP/1.1\nContent-Type: application/json\n\n{\n\t$0\n}',
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          documentation: 'PATCH request',
-          range: range,
-        },
-
-        // Common Headers
-        {
-          label: 'Content-Type: application/json',
-          kind: monaco.languages.CompletionItemKind.Property,
-          insertText: 'Content-Type: application/json',
-          documentation: 'JSON content type header',
-          range: range,
-        },
-        {
-          label: 'Authorization: Bearer',
-          kind: monaco.languages.CompletionItemKind.Property,
-          insertText: 'Authorization: Bearer ${1:token}',
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          documentation: 'Bearer token authorization',
-          range: range,
-        },
-        {
-          label: 'Accept: application/json',
-          kind: monaco.languages.CompletionItemKind.Property,
-          insertText: 'Accept: application/json',
-          documentation: 'Accept JSON response',
-          range: range,
-        },
-        {
-          label: 'User-Agent',
-          kind: monaco.languages.CompletionItemKind.Property,
-          insertText: 'User-Agent: ${1:MyApp/1.0}',
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          documentation: 'User agent header',
-          range: range,
-        },
-      ]
-
-      return { suggestions: suggestions }
-    },
+  monaco.editor.defineTheme('http-light', {
+    base: 'vs',
+    inherit: true,
+    rules: [
+      { token: 'keyword.method', foreground: 'D16969', fontStyle: 'bold' },
+      { token: 'keyword.version', foreground: '0000FF' },
+      { token: 'variable.header', foreground: '0451A5' },
+      { token: 'string.url', foreground: 'A31515' },
+      { token: 'string.path', foreground: 'A31515' },
+      { token: 'comment', foreground: '008000', fontStyle: 'italic' },
+    ],
+    colors: {},
   })
 }

@@ -462,7 +462,24 @@ export const shortcutActions = {
 export const formatShortcut = (shortcut) => {
   if (!shortcut) return '';
   
-  const { key, modifiers = [] } = shortcut;
+  // Handle both old format (key + modifiers) and new format (key + metaKey/ctrlKey/etc)
+  let key = shortcut.key;
+  let modifiers = shortcut.modifiers || [];
+  
+  // If using new format (metaKey, ctrlKey, etc), convert to old format
+  if (!key && (shortcut.metaKey || shortcut.ctrlKey || shortcut.altKey || shortcut.shiftKey)) {
+    const mods = [];
+    if (shortcut.metaKey) mods.push('meta');
+    if (shortcut.ctrlKey) mods.push('ctrl');
+    if (shortcut.altKey) mods.push('alt');
+    if (shortcut.shiftKey) mods.push('shift');
+    modifiers = mods;
+    key = shortcut.key;
+  }
+  
+  // If key is still undefined or empty, return empty string or placeholder
+  if (!key) return '';
+  
   const modifierMap = {
     meta: '⌘',
     ctrl: '⌃',

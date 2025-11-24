@@ -8,20 +8,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Dark mode colors (default)
-        'macos-bg': '#1e1e1e',
-        'macos-sidebar': 'rgba(51, 51, 51, 0.8)',
-        'macos-explorer': '#252526',
-        'macos-border': '#333333',
-        'macos-accent': '#0e639c',
-        'macos-tab-active': '#1e1e1e',
-        'macos-tab-inactive': '#2d2d2d',
-        'macos-item-hover': '#2a2d2e',
-        'macos-item-active': '#37373d',
-        'macos-text-main': '#cccccc',
-        'macos-text-sub': '#858585',
-        'macos-input': '#3c3c3c',
-        'macos-error': '#f14c4c',
+        // 修改：使用 CSS 变量而不是硬编码的颜色值
+        // 这样 index.css 中的 .light 类生效时，颜色会自动切换
+        'macos-bg': 'var(--macos-bg)',
+        'macos-sidebar': 'var(--macos-sidebar)',
+        'macos-explorer': 'var(--macos-explorer)',
+        'macos-border': 'var(--macos-border)',
+        'macos-accent': 'var(--macos-accent)',
+        'macos-tab-active': 'var(--macos-tab-active)',
+        'macos-tab-inactive': 'var(--macos-tab-inactive)',
+        'macos-item-hover': 'var(--macos-item-hover)',
+        'macos-item-active': 'var(--macos-item-active)',
+        'macos-text-main': 'var(--macos-text-main)',
+        'macos-text-sub': 'var(--macos-text-sub)',
+        'macos-input': 'var(--macos-input)',
+        'macos-error': 'var(--macos-error)',
       },
       fontFamily: {
         'macos': ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],

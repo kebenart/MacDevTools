@@ -27,6 +27,7 @@ function Preview() {
     theme,
     showToast,
     previewWidth,
+    getHTTPResponse,
   } = useAppStore()
   const { t } = useTranslation()
 
@@ -37,7 +38,7 @@ function Preview() {
   useEffect(() => {
     loader.init().then((monaco) => {
       monacoRef.current = monaco
-      registerHTTPLanguage()
+      registerHTTPLanguage(monaco)
       // Apply theme immediately after Monaco is ready
       if (currentTool === 'http') {
         const themeName = theme === 'dark' ? 'http-dark' : 'http-light'
@@ -74,12 +75,13 @@ function Preview() {
 
   // Get preview content based on tool type
   const getPreviewContent = () => {
-    if (!activeFileId || !content) {
+    if (!activeFileId) {
       return ''
     }
 
     switch (currentTool) {
       case 'json':
+        if (!content) return ''
         try {
           const parsed = JSON.parse(content)
           return JSON.stringify(parsed, null, 2)
@@ -88,9 +90,10 @@ function Preview() {
         }
 
       case 'xml':
-        return content
+        return content || ''
 
       case 'base64':
+        if (!content) return ''
         try {
           const trimmed = content.trim()
           if (!/^[A-Za-z0-9+/]*={0,2}$/.test(trimmed)) {
@@ -108,7 +111,44 @@ function Preview() {
         }
 
       case 'http':
-        return content
+        // Show HTTP response instead of request
+        const response = getHTTPResponse(activeFileId)
+        if (!response) {
+          return '' // No response yet
+        }
+        
+        // Format response for display
+        let formattedResponse = ''
+        
+        // Status line with duration
+        if (response.error) {
+          formattedResponse += `Error: ${response.error}\n`
+          if (response.duration) {
+            formattedResponse += `Duration: ${response.duration}ms\n`
+          }
+          formattedResponse += '\n'
+        } else {
+          formattedResponse += `HTTP/1.1 ${response.statusCode} ${response.status}\n`
+          if (response.duration) {
+            formattedResponse += `Duration: ${response.duration}ms\n`
+          }
+        }
+        
+        // Headers
+        if (response.headers && Object.keys(response.headers).length > 0) {
+          formattedResponse += '\n'
+          for (const [key, value] of Object.entries(response.headers)) {
+            formattedResponse += `${key}: ${value}\n`
+          }
+        }
+        
+        // Body
+        if (response.body) {
+          formattedResponse += '\n'
+          formattedResponse += response.body
+        }
+        
+        return formattedResponse
 
       default:
         return ''
@@ -139,7 +179,7 @@ function Preview() {
     monacoRef.current = monaco
     
     // Ensure HTTP themes are registered
-    registerHTTPLanguage()
+    registerHTTPLanguage(monaco)
     
     // Apply theme immediately - force apply for HTTP tool
     const themeToApply = currentTool === 'http' 
@@ -210,7 +250,7 @@ function Preview() {
 
   // Render special cases
   const renderSpecialContent = () => {
-    if (!activeFileId || !content) {
+    if (!activeFileId) {
       return (
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="text-macos-text-sub text-sm text-center">
@@ -220,8 +260,24 @@ function Preview() {
       )
     }
 
+    // HTTP tool: show message if no response yet
+    if (currentTool === 'http') {
+      const response = getHTTPResponse(activeFileId)
+      if (!response) {
+        return (
+          <div className="flex-1 flex items-center justify-center p-4">
+            <div className="text-macos-text-sub text-sm text-center">
+              {t('preview.noHttpResponse') || '点击"发送"按钮发送请求，响应将显示在这里'}
+            </div>
+          </div>
+        )
+      }
+      // If there's an error, we'll show it in the formatted response
+      return null
+    }
+
     // JSON parse error
-    if (currentTool === 'json') {
+    if (currentTool === 'json' && content) {
       try {
         JSON.parse(content)
       } catch {
@@ -230,7 +286,7 @@ function Preview() {
     }
 
     // Base64 special cases
-    if (currentTool === 'base64') {
+    if (currentTool === 'base64' && content) {
       try {
         const trimmed = content.trim()
         if (!/^[A-Za-z0-9+/]*={0,2}$/.test(trimmed)) {

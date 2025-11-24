@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../constants/translations'
-import MonacoEditor, { loader } from '@monaco-editor/react'
+import MonacoEditor from '@monaco-editor/react'
 import { registerHTTPLanguage } from '../../utils/httpLanguage'
 import { setupEditorClipboard } from '../../utils/editorClipboard'
 
@@ -27,6 +27,9 @@ function Editor() {
     theme,
     showToast,
     setEditorRef,
+    // 如果您已经在store中添加了viewStates支持，请解构它们，否则可忽略
+    // saveViewState,
+    // getViewState,
   } = useAppStore()
   const { t } = useTranslation()
 
@@ -43,57 +46,21 @@ function Editor() {
   const content = activeFileId ? getFileContent(activeFileId) : ''
   const isDirty = activeFileId ? isFileDirty(activeFileId) : false
 
-  // Initialize Monaco and register HTTP language
-  useEffect(() => {
-    loader.init().then((monaco) => {
-      monacoRef.current = monaco
-      registerHTTPLanguage()
-      // Apply theme immediately after Monaco is ready
-      if (currentTool === 'http') {
-        const themeName = theme === 'dark' ? 'http-dark' : 'http-light'
-        monaco.editor.setTheme(themeName)
-      }
-    })
-  }, [currentTool, theme])
+  // [修复] 在编辑器挂载前注册语言和主题
+  // 这确保了当编辑器初始化并请求 'http-dark' 主题时，该主题已经存在
+  const handleEditorWillMount = (monaco) => {
+    monacoRef.current = monaco
+    registerHTTPLanguage(monaco)
+  }
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor
     monacoRef.current = monaco
     
-    // Ensure HTTP themes are registered
-    registerHTTPLanguage()
-    
-    // Apply theme immediately - use currentTheme which is already calculated
-    // Force apply theme for HTTP tool
-    const themeToApply = currentTool === 'http' 
-      ? (theme === 'dark' ? 'http-dark' : 'http-light')
-      : currentTheme
-    monaco.editor.setTheme(themeToApply)
-    
     // Store editor reference in store for toolbar access
     setEditorRef(editor)
-
-    // Add format action
-    editor.addAction({
-      id: 'format-document',
-      label: 'Format Document',
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL],
-      run: () => {
-        useAppStore.getState().formatActiveFile()
-      },
-    })
-
-    // Add toggle preview action, overriding Cmd+G
-    editor.addAction({
-      id: 'toggle-preview',
-      label: 'Toggle Preview',
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyG],
-      run: () => {
-        useAppStore.getState().togglePreview()
-      },
-    })
     
-    // Setup system clipboard integration (minimal - won't interfere with normal editing)
+    // Setup system clipboard integration
     setupEditorClipboard(monaco, editor, showToast, t)
   }
 
@@ -106,16 +73,11 @@ function Editor() {
   // Get language based on current tool
   const getLanguage = () => {
     switch (currentTool) {
-      case 'json':
-        return 'json'
-      case 'xml':
-        return 'xml'
-      case 'base64':
-        return 'plaintext'
-      case 'http':
-        return 'http'
-      default:
-        return 'plaintext'
+      case 'json': return 'json'
+      case 'xml': return 'xml'
+      case 'base64': return 'plaintext'
+      case 'http': return 'http'
+      default: return 'plaintext'
     }
   }
 
@@ -126,20 +88,6 @@ function Editor() {
     }
     return theme === 'dark' ? 'vs-dark' : 'vs-light'
   }
-
-  // Get current theme name
-  const currentTheme = getEditorTheme()
-  
-  // Update theme when it changes (must be before any conditional returns)
-  useEffect(() => {
-    if (monacoRef.current && editorRef.current) {
-      // Force apply theme, especially for HTTP tool
-      const themeToApply = currentTool === 'http' 
-        ? (theme === 'dark' ? 'http-dark' : 'http-light')
-        : currentTheme
-      monacoRef.current.editor.setTheme(themeToApply)
-    }
-  }, [currentTheme, currentTool, theme])
 
   if (!activeFileId || !activeTab) {
     return (
@@ -155,15 +103,17 @@ function Editor() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden min-h-0" style={{ backgroundColor: 'var(--macos-bg)' }}>
+    <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--macos-bg)' }}>
       <MonacoEditor
-        key={`${activeFileId}-${currentTool}-${theme}`} // Force re-render when file, tool, or theme changes
+        // [修复] 移除 key={activeFileId} 以保持编辑器实例存活，避免闪烁和状态丢失
+        path={activeFile?.path || activeFileId} 
         height="100%"
         language={getLanguage()}
         value={content}
         onChange={handleEditorChange}
+        beforeMount={handleEditorWillMount} // [修复] 关键点：挂载前注册主题
         onMount={handleEditorDidMount}
-        theme={currentTheme}
+        theme={getEditorTheme()}
         options={{
           fontFamily: 'Menlo, Monaco, Courier New, monospace',
           fontSize: 13,
