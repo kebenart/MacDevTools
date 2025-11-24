@@ -20,6 +20,9 @@ var assets embed.FS
 func main() {
 	// Create an instance of the app structure
 	app := NewApp()
+	
+	// Flag to track if we should quit (not minimize)
+	var shouldQuit bool
 
 	// Create application menu (macOS native)
 	appMenu := menu.NewMenu()
@@ -42,6 +45,11 @@ func main() {
 	fileMenu.AddSeparator()
 	fileMenu.AddText("关闭标签", keys.CmdOrCtrl("w"), func(_ *menu.CallbackData) {
 		runtime.EventsEmit(app.ctx, "menu:close-tab")
+	})
+	fileMenu.AddSeparator()
+	fileMenu.AddText("退出", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
+		shouldQuit = true
+		runtime.Quit(app.ctx)
 	})
 
 	// 编辑菜单 - [修复关键] 手动发射事件，而不是让系统默认处理
@@ -121,7 +129,11 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 30, G: 30, B: 30, A: 255},
 		OnStartup:        app.startup,
 		OnBeforeClose: func(ctx context.Context) (prevent bool) {
-			// Minimize window instead of closing (hide to dock)
+			// If shouldQuit is true, allow the app to quit
+			if shouldQuit {
+				return false // Allow default close behavior (quit)
+			}
+			// Otherwise, minimize window instead of closing (hide to dock)
 			runtime.WindowMinimise(ctx)
 			return true // Prevent default close behavior
 		},

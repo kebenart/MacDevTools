@@ -1178,3 +1178,58 @@ func (a *App) ClipboardCut(text string) ClipboardResponse {
 	// This would typically be handled by the frontend by deleting the selected text
 	return ClipboardResponse{Success: true, Data: text}
 }
+
+// SearchResult represents a search match
+type SearchResult struct {
+	FileID   string `json:"fileId"`
+	FileName string `json:"fileName"`
+	ToolName string `json:"toolName"`
+	Count    int    `json:"count"`
+}
+
+// GlobalSearch searches for a string in all files
+func (a *App) GlobalSearch(query string) []SearchResult {
+	var results []SearchResult
+	if query == "" {
+		return results
+	}
+	// Case-insensitive search
+	query = strings.ToLower(query)
+
+	dirs := []string{"json", "xml", "base64", "http"}
+	for _, tool := range dirs {
+		toolPath := filepath.Join(a.storagePath, tool)
+		
+		// Walk through directory
+		filepath.Walk(toolPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			// Skip hidden files
+			if strings.HasPrefix(info.Name(), ".") {
+				return nil
+			}
+
+			// Read file content
+			contentBytes, err := os.ReadFile(path)
+			if err != nil {
+				return nil
+			}
+			content := strings.ToLower(string(contentBytes))
+
+			// Count matches
+			count := strings.Count(content, query)
+			if count > 0 {
+				relPath, _ := filepath.Rel(a.storagePath, path)
+				results = append(results, SearchResult{
+					FileID:   relPath,
+					FileName: info.Name(),
+					ToolName: tool,
+					Count:    count,
+				})
+			}
+			return nil
+		})
+	}
+	return results
+}

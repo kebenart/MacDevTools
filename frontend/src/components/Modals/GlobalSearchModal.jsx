@@ -2,14 +2,11 @@ import { useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../constants/translations'
 import { X, Search } from 'lucide-react'
+// 引入后端搜索方法
+import { GlobalSearch, ReadFileContent, SaveFileContent } from '../../wailsjs/go/main/App'
 
 /**
  * GlobalSearchModal Component
- *
- * Search & Replace across all files:
- * - Cmd+Shift+F to open
- * - Search all files in all tools
- * - Replace functionality with confirmation
  */
 function GlobalSearchModal() {
   const {
@@ -21,52 +18,39 @@ function GlobalSearchModal() {
     updateFileContent,
     setCurrentTool,
     currentTool,
+    getFileContent,
+    storagePath,
   } = useAppStore()
   const { t } = useTranslation()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [replaceQuery, setReplaceQuery] = useState('')
   const [results, setResults] = useState([])
+  const [isSearching, setIsSearching] = useState(false) // 添加搜索状态
 
   if (!isGlobalSearchOpen) return null
 
-  const performSearch = () => {
+  // [修复] 使用后端搜索
+  const performSearch = async () => {
     if (!searchQuery) {
       setResults([])
       return
     }
 
-    const matches = []
-
-    const traverse = (items, toolName) => {
-      items.forEach((item) => {
-        if (item.type === 'folder' && item.children) {
-          traverse(item.children, toolName)
-        } else if (item.type === 'file') {
-          const content = item.content.toLowerCase()
-          const query = searchQuery.toLowerCase()
-
-          if (content.includes(query)) {
-            const count = content.split(query).length - 1
-            matches.push({
-              fileId: item.id,
-              fileName: item.name,
-              toolName,
-              count,
-            })
-          }
-        }
-      })
+    setIsSearching(true)
+    try {
+      // 调用 Go 后端进行搜索
+      const matches = await GlobalSearch(searchQuery)
+      setResults(matches || [])
+    } catch (error) {
+      console.error("Search failed:", error)
+      setResults([])
+    } finally {
+      setIsSearching(false)
     }
-
-    Object.keys(fileSystem).forEach((tool) => {
-      traverse(fileSystem[tool], tool)
-    })
-
-    setResults(matches)
   }
 
-  const performReplace = () => {
+  const performReplace = async () => {
     if (!searchQuery || !confirm(
       t('globalSearch.confirmReplace', { 
         search: searchQuery, 
@@ -79,19 +63,52 @@ function GlobalSearchModal() {
 
     let totalReplacements = 0
 
-    results.forEach((result) => {
-      const file = findItemById(fileSystem[result.toolName], result.fileId)
-      if (file) {
-        const newContent = file.content.replaceAll(searchQuery, replaceQuery)
-        if (newContent !== file.content) {
-          updateFileContent(result.fileId, newContent)
-          const count = file.content.split(searchQuery).length - 1
-          totalReplacements += count
+    // Process each result file
+    for (const result of results) {
+      try {
+        // Get file path
+        const file = findItemById(fileSystem[result.toolName], result.fileId)
+        if (!file || !file.path) {
+          continue
         }
-      }
-    })
 
-    alert(t('globalSearch.replaceSuccess', { count: totalReplacements }))
+        // Read file content from disk
+        const readResult = await ReadFileContent(file.path)
+        if (!readResult.success || !readResult.data) {
+          continue
+        }
+
+        let content = readResult.data
+        const originalContent = content
+
+        // Perform replacement (case-sensitive)
+        // Count occurrences before replacement
+        const regex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
+        const matches = content.match(regex)
+        const matchCount = matches ? matches.length : 0
+
+        if (matchCount > 0) {
+          // Replace all occurrences
+          content = content.replace(regex, replaceQuery)
+          
+          // Save the file
+          const saveResult = await SaveFileContent(file.path, content)
+          if (saveResult.success) {
+            totalReplacements += matchCount
+            
+            // Update in-memory cache if file is open
+            const cachedContent = getFileContent(result.fileId)
+            if (cachedContent) {
+              updateFileContent(result.fileId, content)
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to replace in file ${result.fileId}:`, error)
+      }
+    }
+
+    alert(t('globalSearch.replaceSuccess', { count: totalReplacements }) || `已替换 ${totalReplacements} 处`)
     performSearch() // Refresh results
   }
 
@@ -151,11 +168,12 @@ function GlobalSearchModal() {
           <div className="flex gap-3 justify-end">
             <button
               onClick={performSearch}
+              disabled={isSearching}
               className="px-4 py-2 bg-macos-accent text-white rounded text-sm
-                hover:brightness-110 flex items-center gap-2"
+                hover:brightness-110 flex items-center gap-2 disabled:opacity-50"
             >
               <Search size={14} />
-              {t('globalSearch.search')}
+              {isSearching ? '搜索中...' : t('globalSearch.search')}
             </button>
             <button
               onClick={performReplace}
@@ -172,7 +190,7 @@ function GlobalSearchModal() {
         <div className="flex-1 overflow-y-auto p-5">
           {results.length === 0 ? (
             <div className="text-center text-macos-text-sub text-sm mt-10">
-              {searchQuery ? t('globalSearch.noMatches') : t('globalSearch.enterQuery')}
+              {searchQuery ? (isSearching ? '搜索中...' : t('globalSearch.noMatches')) : t('globalSearch.enterQuery')}
             </div>
           ) : (
             <div className="space-y-2">

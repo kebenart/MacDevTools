@@ -217,7 +217,7 @@ function SettingsModal() {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="flex-1 overflow-y-auto p-5 space-y-5 scrollbar-hide">
           {/* Language */}
           <div className="flex items-center justify-between">
             <div>

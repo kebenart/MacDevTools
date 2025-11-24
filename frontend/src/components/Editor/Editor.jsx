@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../constants/translations'
-import MonacoEditor from '@monaco-editor/react'
+import MonacoEditor, { loader } from '@monaco-editor/react'
 import { registerHTTPLanguage } from '../../utils/httpLanguage'
 import { setupEditorClipboard } from '../../utils/editorClipboard'
 
@@ -27,9 +27,6 @@ function Editor() {
     theme,
     showToast,
     setEditorRef,
-    // 如果您已经在store中添加了viewStates支持，请解构它们，否则可忽略
-    // saveViewState,
-    // getViewState,
   } = useAppStore()
   const { t } = useTranslation()
 
@@ -46,12 +43,13 @@ function Editor() {
   const content = activeFileId ? getFileContent(activeFileId) : ''
   const isDirty = activeFileId ? isFileDirty(activeFileId) : false
 
-  // [修复] 在编辑器挂载前注册语言和主题
-  // 这确保了当编辑器初始化并请求 'http-dark' 主题时，该主题已经存在
-  const handleEditorWillMount = (monaco) => {
-    monacoRef.current = monaco
-    registerHTTPLanguage(monaco)
-  }
+  // Initialize Monaco and register HTTP language
+  useEffect(() => {
+    loader.init().then((monaco) => {
+      monacoRef.current = monaco
+      registerHTTPLanguage()
+    })
+  }, [])
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor
@@ -60,12 +58,13 @@ function Editor() {
     // Store editor reference in store for toolbar access
     setEditorRef(editor)
     
-    // Setup system clipboard integration
+    // Setup system clipboard integration (minimal - won't interfere with normal editing)
     setupEditorClipboard(monaco, editor, showToast, t)
-    
-    // Disable Monaco's default Cmd+G (find next) to allow our custom shortcut
-    editor.addCommand(monaco.KeyMod.Cmd | monaco.KeyCode.KeyG, () => {
-      // Do nothing - let the global shortcut handler take over
+
+    // [修复] 覆盖 Monaco 默认的 Cmd+G (查找下一个)，改为切换预览区域
+    // 使用 useAppStore.getState() 确保获取最新状态和方法
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyG, () => {
+      useAppStore.getState().togglePreview()
     })
   }
 
@@ -78,11 +77,16 @@ function Editor() {
   // Get language based on current tool
   const getLanguage = () => {
     switch (currentTool) {
-      case 'json': return 'json'
-      case 'xml': return 'xml'
-      case 'base64': return 'plaintext'
-      case 'http': return 'http'
-      default: return 'plaintext'
+      case 'json':
+        return 'json'
+      case 'xml':
+        return 'xml'
+      case 'base64':
+        return 'plaintext'
+      case 'http':
+        return 'http'
+      default:
+        return 'plaintext'
     }
   }
 
@@ -110,13 +114,11 @@ function Editor() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--macos-bg)' }}>
       <MonacoEditor
-        // [修复] 移除 key={activeFileId} 以保持编辑器实例存活，避免闪烁和状态丢失
-        path={activeFile?.path || activeFileId} 
+        key={activeFileId} // Force re-render when file changes
         height="100%"
         language={getLanguage()}
         value={content}
         onChange={handleEditorChange}
-        beforeMount={handleEditorWillMount} // [修复] 关键点：挂载前注册主题
         onMount={handleEditorDidMount}
         theme={getEditorTheme()}
         options={{
