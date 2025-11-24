@@ -53,25 +53,45 @@ function SettingsModal() {
 
   const handleKeyDown = (e) => {
     e.preventDefault()
+    e.stopPropagation()
     
     // Skip modifier keys only (don't set key if only modifiers are pressed)
     if (['Control', 'Meta', 'Alt', 'Shift', 'Command', 'Cmd'].includes(e.key)) {
       return
     }
     
-    const newShortcut = {
-      ctrlKey: e.ctrlKey,
-      shiftKey: e.shiftKey,
-      altKey: e.altKey,
-      metaKey: e.metaKey,
-      key: e.key === ' ' ? 'Space' : (e.key || ''),
+    // Normalize key name
+    let keyName = e.key
+    if (keyName === ' ') {
+      keyName = 'Space'
+    } else if (keyName.length > 1) {
+      // Handle special keys like 'Enter', 'Backspace', etc.
+      keyName = keyName
     }
+    
+    // Build modifiers array
+    const modifiers = []
+    if (e.metaKey) modifiers.push('meta')
+    if (e.ctrlKey) modifiers.push('ctrl')
+    if (e.altKey) modifiers.push('alt')
+    if (e.shiftKey) modifiers.push('shift')
+    
+    // Convert to old format (key + modifiers array)
+    const newShortcut = {
+      key: keyName,
+      modifiers: modifiers,
+    }
+    
     setTempShortcut(newShortcut)
   }
 
   const saveShortcut = () => {
     if (editingShortcut && tempShortcut.key) {
-      updateShortcut(editingShortcut, tempShortcut)
+      // Convert to old format if needed
+      const shortcutToSave = tempShortcut.modifiers 
+        ? { key: tempShortcut.key, modifiers: tempShortcut.modifiers }
+        : tempShortcut
+      updateShortcut(editingShortcut, shortcutToSave)
       setEditingShortcut(null)
       setTempShortcut({})
     }

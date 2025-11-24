@@ -62,6 +62,11 @@ function Editor() {
     
     // Setup system clipboard integration
     setupEditorClipboard(monaco, editor, showToast, t)
+    
+    // Disable Monaco's default Cmd+G (find next) to allow our custom shortcut
+    editor.addCommand(monaco.KeyMod.Cmd | monaco.KeyCode.KeyG, () => {
+      // Do nothing - let the global shortcut handler take over
+    })
   }
 
   const handleEditorChange = (value) => {

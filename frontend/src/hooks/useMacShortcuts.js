@@ -297,6 +297,14 @@ export const useMacShortcuts = () => {
              return
           }
 
+          // For togglePreview (Cmd+G), always prevent default to override Monaco's find next
+          if (action === 'togglePreview') {
+            e.preventDefault()
+            e.stopPropagation()
+            executeAction(action)
+            return
+          }
+
           e.preventDefault()
           executeAction(action)
           return
