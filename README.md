@@ -1,87 +1,95 @@
 # MacDevTools
 
-A high-performance developer toolkit built with Wails and React, designed to provide a native macOS experience.
+一个基于 Wails 和 React 构建的高性能开发者工具集，专为 macOS 原生体验而设计。
 
 ![MacDevTools](https://img.shields.io/badge/version-1.0.0-blue)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## ✨ Features
+## ✨ 功能特性
 
-### 🎨 **Native macOS Experience**
-- **Immersive Window**: Hidden inset title bar with native traffic lights (red/yellow/green buttons)
-- **Backdrop Blur**: Translucent sidebar with macOS-style blur effect
-- **Native Menus**: Full macOS menu bar integration
-- **Native Dialogs**: System file picker for import/export
-- **macOS Shortcuts**: All keyboard shortcuts use `Cmd` instead of `Ctrl`
+### 🎨 **原生 macOS 体验**
+- **沉浸式窗口**：隐藏式标题栏，带有原生交通灯按钮（红/黄/绿）
+- **背景模糊**：半透明侧边栏，具有 macOS 风格的模糊效果
+- **原生菜单**：完整的 macOS 菜单栏集成
+- **原生对话框**：系统文件选择器用于导入/导出
+- **macOS 快捷键**：所有键盘快捷键使用 `Cmd` 而不是 `Ctrl`
 
-### 🛠️ **Developer Tools**
+### 🛠️ **开发者工具**
 
-#### 1. **JSON Tools**
-- Format JSON with proper indentation
-- Compress JSON (remove whitespace)
-- Syntax validation with error highlighting
-- Real-time preview
+#### 1. **JSON 工具**
+- 格式化 JSON，带有适当的缩进
+- 压缩 JSON（移除空白字符）
+- 语法验证，带有错误高亮
+- 实时预览
 
-#### 2. **XML Tools**
-- Format XML documents
-- Convert XML to JSON
-- Syntax validation
+#### 2. **XML 工具**
+- 格式化 XML 文档
+- 将 XML 转换为 JSON
+- 语法验证
 
-#### 3. **Base64 Tools**
-- Encode text to Base64
-- Decode Base64 to text
-- Real-time preview of decoded content
+#### 3. **Base64 工具**
+- 将文本编码为 Base64
+- 将 Base64 解码为文本
+- 解码内容的实时预览
 
-#### 4. **HTTP Tools**
-- Send HTTP requests (GET, POST, PUT, DELETE, etc.)
-- Custom headers support
-- Request body editor
-- Response viewer
+#### 4. **HTTP 工具**
+- 发送 HTTP 请求（GET、POST、PUT、DELETE 等）
+- 自定义请求头支持
+- 请求体编辑器
+- 响应查看器
+- 语法高亮和代码折叠
+- 右键菜单复制功能
 
-### 📁 **File Management**
-- Virtual file system with folders
-- Create, rename, delete files and folders
-- Right-click context menus
-- Tab-based editor with dirty state tracking
-- Auto-save option
+### 📁 **文件管理**
+- 虚拟文件系统，支持文件夹
+- 创建、重命名、删除文件和文件夹
+- 右键上下文菜单
+- 基于标签页的编辑器，带有未保存状态跟踪
+- 自动保存选项
+- 可拖拽调整预览框宽度
 
-### 🔍 **Global Search & Replace**
-- Search across all files in all tools
-- Replace functionality with confirmation
-- Keyboard shortcut: `Cmd+Shift+F`
+### 🔍 **全局搜索与替换**
+- 在所有工具的所有文件中搜索
+- 替换功能，带有确认对话框
+- 键盘快捷键：`Cmd+Shift+F`
 
-### 💾 **Backup & Restore**
-- Export all data to JSON file
-- Import backup files
-- Native macOS save/open dialogs
+### 💾 **备份与恢复**
+- 将所有数据导出为 JSON 文件
+- 导入备份文件
+- 原生 macOS 保存/打开对话框
 
-### 🎨 **Theming**
-- Light and Dark mode
-- macOS-inspired color palette
-- Smooth transitions
+### 🎨 **主题**
+- 浅色和深色模式
+- macOS 风格的颜色调色板
+- 平滑过渡动画
+- HTTP 工具专用主题样式
 
----
-
-## 📦 Tech Stack
-
-### **Backend**
-- **Wails v2**: Native Go desktop framework
-- **Go 1.21+**: Business logic and system integration
-
-### **Frontend**
-- **React 18**: UI framework
-- **Vite**: Build tool and dev server
-- **TailwindCSS**: Utility-first CSS framework
-- **Zustand**: Lightweight state management
-- **Monaco Editor**: Code editor component
-- **Lucide React**: Icon library
+### 🪟 **窗口行为**
+- 点击关闭按钮时最小化到 Dock（而非直接关闭）
+- 支持窗口最小化和最大化
 
 ---
 
-## 🚀 Getting Started
+## 📦 技术栈
 
-### **Prerequisites**
+### **后端**
+- **Wails v2**：原生 Go 桌面框架
+- **Go 1.21+**：业务逻辑和系统集成
+
+### **前端**
+- **React 18**：UI 框架
+- **Vite**：构建工具和开发服务器
+- **TailwindCSS**：实用优先的 CSS 框架
+- **Zustand**：轻量级状态管理
+- **Monaco Editor**：代码编辑器组件（支持语法高亮、代码折叠）
+- **Lucide React**：图标库
+
+---
+
+## 🚀 快速开始
+
+### **前置要求**
 
 1. **Go 1.21+**
    ```bash
@@ -98,51 +106,51 @@ A high-performance developer toolkit built with Wails and React, designed to pro
    go install github.com/wailsapp/wails/v2/cmd/wails@latest
    ```
 
-### **Installation**
+### **安装**
 
-1. **Clone the repository**
+1. **克隆仓库**
    ```bash
    cd MacDevTools
    ```
 
-2. **Install frontend dependencies**
+2. **安装前端依赖**
    ```bash
    cd frontend
    npm install
    cd ..
    ```
 
-3. **Run in development mode**
+3. **开发模式运行**
    ```bash
    wails dev
    ```
 
-4. **Build for production**
+4. **构建生产版本**
    ```bash
    wails build
    ```
 
-   The built app will be in `build/bin/MacDevTools.app`
+   构建的应用位于 `build/bin/MacDevTools.app`
 
 ---
 
-## 📖 HTTP Tool Usage Examples
+## 📖 HTTP 工具使用示例
 
-The HTTP tool allows you to send various HTTP requests and view responses. The request format is similar to raw HTTP request format.
+HTTP 工具允许你发送各种 HTTP 请求并查看响应。请求格式类似于原始 HTTP 请求格式。
 
-### **Request Format**
+### **请求格式**
 
-HTTP requests follow this format:
+HTTP 请求的格式如下：
 
 ```
 METHOD URL HTTP/1.1
 Header-Name: Header-Value
 Another-Header: Another-Value
 
-Request Body (optional)
+请求体（可选）
 ```
 
-### **Example 1: GET Request**
+### **示例 1: GET 请求**
 
 ```http
 GET https://api.github.com/users/octocat HTTP/1.1
@@ -150,12 +158,12 @@ Accept: application/json
 User-Agent: MacDevTools/1.0
 ```
 
-**Notes:**
-- First line: `GET` is the method, followed by the full URL
-- Subsequent lines: Request headers, one per line, format: `Key: Value`
-- Request body follows after a blank line (GET requests usually don't have a body)
+**说明：**
+- 第一行：`GET` 是请求方法，后面是完整的 URL
+- 后续行：请求头，每行一个，格式为 `Key: Value`
+- 空行后是请求体（GET 请求通常没有请求体）
 
-### **Example 2: POST Request (with JSON body)**
+### **示例 2: POST 请求（带 JSON 请求体）**
 
 ```http
 POST https://api.example.com/users HTTP/1.1
@@ -168,13 +176,13 @@ Authorization: Bearer your-token-here
 }
 ```
 
-**Notes:**
-- Use `POST` method
-- Set `Content-Type` to `application/json`
-- Add `Authorization` header
-- JSON body follows after blank line
+**说明：**
+- 使用 `POST` 方法
+- 设置 `Content-Type` 为 `application/json`
+- 添加 `Authorization` 请求头
+- 空行后是 JSON 格式的请求体
 
-### **Example 3: Using Relative Path with Host Header**
+### **示例 3: 使用相对路径和 Host 头**
 
 ```http
 GET /api/v1/users HTTP/1.1
@@ -182,12 +190,12 @@ Host: api.example.com
 Accept: application/json
 ```
 
-**Notes:**
-- If URL is not a full path, you can use relative path `/api/v1/users`
-- Specify server address via `Host` header
-- Tool will automatically combine to `http://api.example.com/api/v1/users`
+**说明：**
+- 如果 URL 不是完整路径，可以使用相对路径 `/api/v1/users`
+- 通过 `Host` 请求头指定服务器地址
+- 工具会自动组合为 `http://api.example.com/api/v1/users`
 
-### **Example 4: PUT Request (Update Resource)**
+### **示例 4: PUT 请求（更新资源）**
 
 ```http
 PUT https://api.example.com/users/123 HTTP/1.1
@@ -200,38 +208,38 @@ Authorization: Bearer your-token-here
 }
 ```
 
-### **Example 5: DELETE Request**
+### **示例 5: DELETE 请求**
 
 ```http
 DELETE https://api.example.com/users/123 HTTP/1.1
 Authorization: Bearer your-token-here
 ```
 
-### **Usage Steps**
+### **使用步骤**
 
-1. **Create HTTP File**
-   - Switch to HTTP tool (`Cmd+4` or click sidebar)
-   - Create new file (`Cmd+N`) or open existing file
+1. **创建 HTTP 文件**
+   - 切换到 HTTP 工具（`Cmd+4` 或点击侧边栏）
+   - 创建新文件（`Cmd+N`）或打开现有文件
 
-2. **Write Request**
-   - Enter HTTP request content in the editor
-   - Syntax highlighting and autocomplete supported (typing `GET`, `POST`, etc. will show suggestions)
+2. **编写请求**
+   - 在编辑器中输入 HTTP 请求内容
+   - 支持语法高亮和自动补全（输入 `GET`、`POST` 等会提示）
 
-3. **Send Request**
-   - Click the "Send" button in the toolbar
-   - Or use keyboard shortcut (if configured)
+3. **发送请求**
+   - 点击工具栏的"发送"按钮
+   - 或使用快捷键（如果有配置）
 
-4. **View Response**
-   - Response will automatically appear in the preview panel on the right
-   - Response format includes:
-     - Status line (HTTP/1.1 Status Code Status Text)
-     - Response headers
-     - Response body
-   - Supports syntax highlighting, code folding, and right-click copy
+4. **查看响应**
+   - 响应会自动显示在右侧预览面板
+   - 响应格式包括：
+     - 状态行（HTTP/1.1 状态码 状态文本）
+     - 响应头
+     - 响应体
+   - 支持语法高亮、代码折叠和右键复制
 
-### **Response Preview**
+### **响应预览**
 
-After sending a request, the preview panel shows formatted response:
+发送请求后，预览面板会显示格式化的响应：
 
 ```
 HTTP/1.1 200 OK
@@ -247,91 +255,98 @@ Date: Mon, 01 Jan 2024 12:00:00 GMT
 }
 ```
 
-### **Supported HTTP Methods**
+### **支持的 HTTP 方法**
 
-- `GET` - Retrieve resource
-- `POST` - Create resource
-- `PUT` - Update resource (full replacement)
-- `PATCH` - Partial update resource
-- `DELETE` - Delete resource
-- `HEAD` - Get response headers (no body)
-- `OPTIONS` - Get supported methods
-- `TRACE` - Echo server request
-- `CONNECT` - Establish tunnel connection
+- `GET` - 获取资源
+- `POST` - 创建资源
+- `PUT` - 更新资源（完整替换）
+- `PATCH` - 部分更新资源
+- `DELETE` - 删除资源
+- `HEAD` - 获取响应头（不返回响应体）
+- `OPTIONS` - 获取服务器支持的请求方法
+- `TRACE` - 回显服务器收到的请求
+- `CONNECT` - 建立隧道连接
 
-### **Tips & Tricks**
+### **提示和技巧**
 
-1. **Autocomplete**: Automatic suggestions when typing HTTP methods or common headers
-2. **Syntax Highlighting**: HTTP methods, URLs, headers have different colors
-3. **Code Folding**: Can fold request body sections for easier viewing
-4. **Right-click Copy**: Right-click in preview panel to copy response content
-5. **Error Handling**: If request fails, error message appears in preview panel
-6. **Timeout**: Request timeout is 30 seconds
-7. **Response Size Limit**: Response body max size is 10MB, larger responses will be truncated
-
----
-
-## ⌨️ Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Cmd+1/2/3/4` | Switch between tools (JSON/XML/Base64/HTTP) |
-| `Cmd+Shift+F` | Open global search |
-| `Cmd+W` | Close current tab |
-| `Cmd+S` | Save file (triggers auto-save check) |
-| `Cmd+B` | Toggle file explorer |
-| `Cmd+Shift+P` | Toggle preview panel |
-| `Cmd+,` | Open settings |
+1. **自动补全**：输入 HTTP 方法或常用请求头时会自动提示
+2. **语法高亮**：HTTP 方法、URL、请求头等都有不同的颜色标识
+3. **代码折叠**：可以折叠请求体部分，方便查看
+4. **右键复制**：在预览面板中右键可以复制响应内容
+5. **错误处理**：如果请求失败，错误信息会显示在预览面板中
+6. **超时设置**：请求超时时间为 30 秒
+7. **响应大小限制**：响应体最大为 10MB，超过部分会被截断
 
 ---
 
-## 🏗️ Project Structure
+## ⌨️ 键盘快捷键
+
+| 快捷键 | 操作 |
+|--------|------|
+| `Cmd+1/2/3/4` | 切换工具（JSON/XML/Base64/HTTP） |
+| `Cmd+Shift+F` | 打开全局搜索 |
+| `Cmd+W` | 关闭当前标签页 |
+| `Cmd+S` | 保存文件（触发自动保存检查） |
+| `Cmd+B` | 切换文件资源管理器 |
+| `Cmd+G` | 切换预览面板 |
+| `Cmd+,` | 打开设置 |
+| `Cmd+N` | 新建文件 |
+| `Cmd+Shift+N` | 新建文件夹 |
+| `Cmd+D` | 复制文件/文件夹 |
+| `Cmd+X` | 剪切 |
+| `Cmd+C` | 复制 |
+| `Cmd+V` | 粘贴 |
+| `Delete` | 删除文件/文件夹 |
+
+---
+
+## 🏗️ 项目结构
 
 ```
 MacDevTools/
-├── main.go                 # Wails app entry point with macOS config
-├── app.go                  # Business logic (JSON, XML, Base64, HTTP tools)
-├── go.mod                  # Go dependencies
-├── wails.json              # Wails configuration
+├── main.go                 # Wails 应用入口点，包含 macOS 配置
+├── app.go                  # 业务逻辑（JSON、XML、Base64、HTTP 工具）
+├── go.mod                  # Go 依赖
+├── wails.json              # Wails 配置
 └── frontend/
-    ├── package.json        # Node dependencies
-    ├── vite.config.js      # Vite configuration
-    ├── tailwind.config.js  # TailwindCSS configuration
-    ├── index.html          # HTML entry point
+    ├── package.json        # Node 依赖
+    ├── vite.config.js      # Vite 配置
+    ├── tailwind.config.js  # TailwindCSS 配置
+    ├── index.html          # HTML 入口点
     └── src/
-        ├── main.jsx        # React entry point
-        ├── App.jsx         # Root component
-        ├── index.css       # Global styles
+        ├── main.jsx        # React 入口点
+        ├── App.jsx         # 根组件
+        ├── index.css       # 全局样式
         ├── store/
-        │   └── useAppStore.js    # Zustand state management
+        │   └── useAppStore.js    # Zustand 状态管理
         ├── hooks/
-        │   └── useMacShortcuts.js # macOS keyboard shortcuts
+        │   └── useMacShortcuts.js # macOS 键盘快捷键
         ├── components/
         │   ├── macOS/
-        │   │   └── TitleBarSpacer.jsx  # Traffic lights spacing
+        │   │   └── TitleBarSpacer.jsx  # 交通灯间距
         │   ├── Layout/
-        │   │   └── Sidebar.jsx         # Tool selector
+        │   │   └── Sidebar.jsx         # 工具选择器
         │   ├── Explorer/
-        │   │   ├── FileExplorer.jsx    # File tree
-        │   │   └── ContextMenu.jsx     # Right-click menu
+        │   │   ├── FileExplorer.jsx    # 文件树
+        │   │   └── ContextMenu.jsx     # 右键菜单
         │   ├── Editor/
-        │   │   ├── MainContent.jsx     # Main container
-        │   │   ├── TabBar.jsx          # File tabs
-        │   │   ├── Toolbar.jsx         # Action buttons
-        │   │   ├── Editor.jsx          # Monaco editor
-        │   │   └── Preview.jsx         # Preview panel
+        │   │   ├── MainContent.jsx     # 主容器
+        │   │   ├── TabBar.jsx          # 文件标签页
+        │   │   ├── Toolbar.jsx         # 操作按钮
+        │   │   ├── Editor.jsx          # Monaco 编辑器
+        │   │   └── Preview.jsx         # 预览面板（支持语法高亮、代码折叠、右键复制）
         │   └── Modals/
-        │       ├── SettingsModal.jsx   # Settings dialog
-        │       └── GlobalSearchModal.jsx # Search & replace
+        │       ├── SettingsModal.jsx   # 设置对话框
+        │       └── GlobalSearchModal.jsx # 搜索与替换
         └── wailsjs/
-            └── go/main/App.js   # Auto-generated Go bindings
+            └── go/main/App.js   # 自动生成的 Go 绑定
 ```
 
 ---
 
-## 🎨 macOS-Specific Implementation Details
+## 🎨 macOS 特定实现细节
 
-### **1. Window Configuration (`main.go:66-82`)**
+### **1. 窗口配置 (`main.go:113-144`)**
 
 ```go
 Mac: &mac.Options{
@@ -346,7 +361,17 @@ Mac: &mac.Options{
 }
 ```
 
-### **2. Traffic Lights Spacing (`TitleBarSpacer.jsx:12-17`)**
+### **2. 关闭按钮行为 (`main.go:123-127`)**
+
+```go
+OnBeforeClose: func(ctx context.Context) (prevent bool) {
+    // 最小化窗口而不是关闭（隐藏到 Dock）
+    runtime.WindowMinimise(ctx)
+    return true // 阻止默认关闭行为
+}
+```
+
+### **3. 交通灯间距 (`TitleBarSpacer.jsx:12-17`)**
 
 ```jsx
 <div
@@ -355,7 +380,7 @@ Mac: &mac.Options{
 />
 ```
 
-### **3. Backdrop Blur (`Sidebar.jsx:38-42`)**
+### **4. 背景模糊 (`Sidebar.jsx:38-42`)**
 
 ```jsx
 <div
@@ -364,7 +389,7 @@ Mac: &mac.Options{
 />
 ```
 
-### **4. Native File Dialogs (`app.go:31-62`)**
+### **5. 原生文件对话框 (`app.go:97-144`)**
 
 ```go
 func (a *App) OpenFileDialog() (string, error) {
@@ -373,44 +398,76 @@ func (a *App) OpenFileDialog() (string, error) {
 }
 ```
 
-### **5. Keyboard Shortcuts (`useMacShortcuts.js:18`)**
+### **6. 键盘快捷键 (`useMacShortcuts.js:18`)**
 
 ```js
-const isMod = e.metaKey || e.ctrlKey  // metaKey = Cmd on macOS
+const isMod = e.metaKey || e.ctrlKey  // metaKey = macOS 上的 Cmd
 ```
 
----
+### **7. 预览面板 (`Preview.jsx`)**
 
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- 使用 Monaco Editor 提供语法高亮
+- 支持代码折叠
+- 右键菜单支持复制内容
+- 可拖拽调整宽度
+- 无标题栏和关闭按钮，仅通过快捷键控制
 
 ---
 
-## 📝 License
+## 🎯 主要功能说明
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### **文件操作**
+- **创建文件/文件夹**：右键点击资源管理器空白区域
+- **重命名**：右键点击文件/文件夹，选择"重命名"，或使用快捷键
+- **删除**：右键点击文件/文件夹，选择"删除"，或使用 Delete 键（带确认对话框）
+- **复制/剪切/粘贴**：支持文件操作，使用系统剪贴板
+
+### **编辑器功能**
+- **语法高亮**：根据文件类型自动高亮
+- **代码折叠**：支持折叠代码块
+- **自动保存**：可在设置中启用
+- **标签页管理**：支持多个文件同时打开
+- **预览面板**：实时预览格式化后的内容
+
+### **HTTP 工具**
+- **语法高亮**：HTTP 方法、URL、请求头等都有颜色区分
+- **代码折叠**：支持折叠请求体等部分
+- **深色/浅色主题**：根据应用主题自动切换
+- **右键复制**：支持复制选中内容或全部内容
 
 ---
 
-## 🙏 Acknowledgments
+## 🤝 贡献
 
-- [Wails](https://wails.io/) - Amazing Go + Web framework
-- [React](https://react.dev/) - UI library
-- [TailwindCSS](https://tailwindcss.com/) - CSS framework
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/) - Code editor
-- [Lucide](https://lucide.dev/) - Beautiful icons
+欢迎贡献！请遵循以下步骤：
+
+1. Fork 仓库
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m '添加一些 AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开 Pull Request
 
 ---
 
-## 📧 Contact
+## 📝 许可证
 
-For questions or feedback, please open an issue on GitHub.
+本项目采用 MIT 许可证 - 详情请参阅 [LICENSE](LICENSE) 文件
 
-**Built with ❤️ for the macOS developer community**
+---
+
+## 🙏 致谢
+
+- [Wails](https://wails.io/) - 出色的 Go + Web 框架
+- [React](https://react.dev/) - UI 库
+- [TailwindCSS](https://tailwindcss.com/) - CSS 框架
+- [Monaco Editor](https://microsoft.github.io/monaco-editor/) - 代码编辑器
+- [Lucide](https://lucide.dev/) - 精美的图标
+
+---
+
+## 📧 联系方式
+
+如有问题或反馈，请在 GitHub 上提交 issue。
+
+**为 macOS 开发者社区用心打造 ❤️**
+
