@@ -69,7 +69,12 @@ function ContextMenu({ x, y, items, onClose }) {
         return (
           <button
             key={index}
-            onClick={item.onClick}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (item.onClick) {
+                item.onClick()
+              }
+            }}
             className={`w-full text-left px-4 py-1.5 text-sm transition-colors flex items-center justify-between
               ${
                 item.danger

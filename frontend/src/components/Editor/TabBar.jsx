@@ -104,7 +104,21 @@ function TabBar() {
           return (
             <div
               key={tab.id}
-              onClick={() => openFile(tab.id, currentTool)}
+              onClick={() => {
+                // Determine tool from tab path or use current tool
+                const tabTool = tab.path ? (() => {
+                  // Extract tool from path
+                  const pathParts = tab.path.split('/')
+                  const tools = ['json', 'xml', 'base64', 'http']
+                  for (const tool of tools) {
+                    if (pathParts.includes(tool)) {
+                      return tool
+                    }
+                  }
+                  return null
+                })() : null
+                openFile(tab.id, tabTool || currentTool)
+              }}
               onContextMenu={(e) => handleContextMenu(e, tab)}
               className={`
                 h-[34px] px-3 flex items-center gap-2 cursor-pointer

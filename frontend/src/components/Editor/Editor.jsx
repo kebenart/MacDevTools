@@ -48,12 +48,27 @@ function Editor() {
     loader.init().then((monaco) => {
       monacoRef.current = monaco
       registerHTTPLanguage()
+      // Apply theme immediately after Monaco is ready
+      if (currentTool === 'http') {
+        const themeName = theme === 'dark' ? 'http-dark' : 'http-light'
+        monaco.editor.setTheme(themeName)
+      }
     })
-  }, [])
+  }, [currentTool, theme])
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor
     monacoRef.current = monaco
+    
+    // Ensure HTTP themes are registered
+    registerHTTPLanguage()
+    
+    // Apply theme immediately - use currentTheme which is already calculated
+    // Force apply theme for HTTP tool
+    const themeToApply = currentTool === 'http' 
+      ? (theme === 'dark' ? 'http-dark' : 'http-light')
+      : currentTheme
+    monaco.editor.setTheme(themeToApply)
     
     // Store editor reference in store for toolbar access
     setEditorRef(editor)
@@ -112,6 +127,20 @@ function Editor() {
     return theme === 'dark' ? 'vs-dark' : 'vs-light'
   }
 
+  // Get current theme name
+  const currentTheme = getEditorTheme()
+  
+  // Update theme when it changes (must be before any conditional returns)
+  useEffect(() => {
+    if (monacoRef.current && editorRef.current) {
+      // Force apply theme, especially for HTTP tool
+      const themeToApply = currentTool === 'http' 
+        ? (theme === 'dark' ? 'http-dark' : 'http-light')
+        : currentTheme
+      monacoRef.current.editor.setTheme(themeToApply)
+    }
+  }, [currentTheme, currentTool, theme])
+
   if (!activeFileId || !activeTab) {
     return (
       <div className="flex-1 flex items-center justify-center bg-macos-bg">
@@ -126,15 +155,15 @@ function Editor() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--macos-bg)' }}>
+    <div className="flex-1 flex flex-col overflow-hidden min-h-0" style={{ backgroundColor: 'var(--macos-bg)' }}>
       <MonacoEditor
-        key={activeFileId} // Force re-render when file changes
+        key={`${activeFileId}-${currentTool}-${theme}`} // Force re-render when file, tool, or theme changes
         height="100%"
         language={getLanguage()}
         value={content}
         onChange={handleEditorChange}
         onMount={handleEditorDidMount}
-        theme={getEditorTheme()}
+        theme={currentTheme}
         options={{
           fontFamily: 'Menlo, Monaco, Courier New, monospace',
           fontSize: 13,

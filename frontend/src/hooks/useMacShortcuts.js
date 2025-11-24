@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { EventsOn } from '../wailsjs/runtime/runtime'
 import { copyToClipboard, pasteFromClipboard, cutToClipboard } from '../utils/clipboard'
+import { ShowDeleteConfirmDialog } from '../wailsjs/go/main/App'
 
 /**
  * Custom hook for handling macOS keyboard shortcuts
@@ -263,11 +264,16 @@ export const useMacShortcuts = () => {
              break
           case 'delete':
              if (!editorRef?.hasTextFocus() && !isNativeInput() && selectedItem) {
-                if (confirm(selectedItem.type === 'folder' 
+                const confirmMessage = selectedItem.type === 'folder' 
                     ? `确定要删除文件夹 "${selectedItem.name}" 及其所有内容吗？` 
-                    : `确定要删除文件 "${selectedItem.name}" 吗？`)) {
+                    : `确定要删除文件 "${selectedItem.name}" 吗？`
+                ShowDeleteConfirmDialog(confirmMessage).then(result => {
+                  if (result === '删除') {
                     deleteItem(selectedItem)
-                }
+                  }
+                }).catch(error => {
+                  console.error('Delete confirmation error:', error)
+                })
              }
              break
         }

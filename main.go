@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log"
 
@@ -119,7 +120,12 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 30, G: 30, B: 30, A: 255},
 		OnStartup:        app.startup,
-		Menu:             appMenu,
+		OnBeforeClose: func(ctx context.Context) (prevent bool) {
+			// Minimize window instead of closing (hide to dock)
+			runtime.WindowMinimise(ctx)
+			return true // Prevent default close behavior
+		},
+		Menu: appMenu,
 		Bind: []interface{}{
 			app,
 		},

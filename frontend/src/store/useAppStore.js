@@ -45,6 +45,7 @@ export const useAppStore = create((set, get) => ({
   isExplorerVisible: true,
   isSettingsOpen: false,
   isGlobalSearchOpen: false,
+  previewWidth: 400, // Preview panel width in pixels
 
   // Toast notifications
   toast: null,
@@ -126,16 +127,56 @@ export const useAppStore = create((set, get) => ({
     return null
   },
 
+  // Helper to determine tool from file path
+  getToolFromPath: (path) => {
+    const { storagePath } = get()
+    if (!path || !storagePath) return null
+    
+    // Extract relative path from storage path
+    const relPath = path.replace(storagePath + '/', '').split('/')[0]
+    const tools = ['json', 'xml', 'base64', 'http']
+    return tools.includes(relPath) ? relPath : null
+  },
+
   openFile: async (fileId, tool) => {
-    const { currentTool, fileSystem, openTabs, fileContents } = get()
+    const { currentTool, fileSystem, openTabs, fileContents, storagePath } = get()
+
+    // If tool is not provided, try to determine from tab's path
+    if (!tool) {
+      const tab = openTabs.find(t => t.id === fileId)
+      if (tab && tab.path) {
+        // Extract tool from path (e.g., /path/to/storage/json/file.json -> json)
+        const relPath = tab.path.replace(storagePath + '/', '').split('/')[0]
+        const tools = ['json', 'xml', 'base64', 'http']
+        tool = tools.includes(relPath) ? relPath : currentTool
+      } else {
+        tool = currentTool
+      }
+    }
 
     // Switch tool if needed
     if (tool !== currentTool) {
       set({ currentTool: tool })
     }
 
-    // Find file
-    const file = get().findItemById(fileSystem[tool], fileId)
+    // Find file in the correct tool's file system
+    let file = get().findItemById(fileSystem[tool], fileId)
+    
+    // If not found in current tool, search in all tools
+    if (!file) {
+      const tools = ['json', 'xml', 'base64', 'http']
+      for (const t of tools) {
+        file = get().findItemById(fileSystem[t], fileId)
+        if (file) {
+          tool = t
+          if (tool !== currentTool) {
+            set({ currentTool: tool })
+          }
+          break
+        }
+      }
+    }
+    
     if (!file || file.type !== 'file') return
 
     // Load content if not cached
@@ -409,17 +450,33 @@ export const useAppStore = create((set, get) => ({
 
   deleteItem: async (item) => {
     console.log('Deleting item:', item)
-    const result = await App.DeleteItem(item.path)
-    console.log('Delete result:', result)
-    if (result.success) {
-      if (get().openTabs.some((tab) => tab.id === item.id)) {
-        await get().closeTab(item.id)
+    console.log('Item path:', item.path)
+    console.log('Item type:', item.type)
+    console.log('Item name:', item.name)
+    
+    if (!item || !item.path) {
+      console.error('Delete failed: Invalid item or missing path', item)
+      get().showToast('删除失败: 无效的项目或缺少路径', 'error')
+      return
+    }
+    
+    try {
+      const result = await App.DeleteItem(item.path)
+      console.log('Delete result:', result)
+      
+      if (result.success) {
+        if (get().openTabs.some((tab) => tab.id === item.id)) {
+          await get().closeTab(item.id)
+        }
+        await get().refreshFileList()
+        get().showToast('删除成功', 'success')
+      } else {
+        console.error('Delete failed:', result.error)
+        get().showToast(result.error || '删除失败', 'error')
       }
-      await get().refreshFileList()
-      get().showToast('删除成功', 'success')
-    } else {
-      console.error('Delete failed:', result.error)
-      get().showToast(result.error, 'error')
+    } catch (error) {
+      console.error('Delete error:', error)
+      get().showToast(`删除失败: ${error.message || error}`, 'error')
     }
   },
 
@@ -658,6 +715,7 @@ export const useAppStore = create((set, get) => ({
   // UI actions
   togglePreview: () => set((state) => ({ isPreviewVisible: !state.isPreviewVisible })),
   toggleExplorer: () => set((state) => ({ isExplorerVisible: !state.isExplorerVisible })),
+  setPreviewWidth: (width) => set({ previewWidth: width }),
   openSettings: () => set({ isSettingsOpen: true }),
   closeSettings: () => set({ isSettingsOpen: false }),
   openGlobalSearch: () => set({ isGlobalSearchOpen: true }),

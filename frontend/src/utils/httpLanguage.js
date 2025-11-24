@@ -57,33 +57,58 @@ export function registerHTTPLanguage() {
   })
 
   // Define theme colors for HTTP
-  monaco.editor.defineTheme('http-dark', {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [
-      { token: 'keyword.method', foreground: 'D16969', fontStyle: 'bold' },
-      { token: 'keyword.version', foreground: '569CD6' },
-      { token: 'variable.header', foreground: '9CDCFE' },
-      { token: 'string.url', foreground: 'CE9178' },
-      { token: 'string.path', foreground: 'CE9178' },
-      { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
-    ],
-    colors: {},
-  })
+  // Note: These themes must be defined before they are used
+  try {
+    monaco.editor.defineTheme('http-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'keyword.method', foreground: 'D16969', fontStyle: 'bold' },
+        { token: 'keyword.version', foreground: '569CD6' },
+        { token: 'variable.header', foreground: '9CDCFE' },
+        { token: 'string.url', foreground: 'CE9178' },
+        { token: 'string.path', foreground: 'CE9178' },
+        { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
+      ],
+      colors: {
+        'editor.background': '#1E1E1E',
+        'editor.foreground': '#D4D4D4',
+        'editorLineNumber.foreground': '#858585',
+        'editor.selectionBackground': '#264F78',
+        'editor.lineHighlightBackground': '#2A2D2E',
+        'editorCursor.foreground': '#AEAFAD',
+        'editorWhitespace.foreground': '#3B3A32',
+        'editorIndentGuide.background': '#404040',
+        'editorIndentGuide.activeBackground': '#707070',
+      },
+    })
 
-  monaco.editor.defineTheme('http-light', {
-    base: 'vs',
-    inherit: true,
-    rules: [
-      { token: 'keyword.method', foreground: 'D16969', fontStyle: 'bold' },
-      { token: 'keyword.version', foreground: '0000FF' },
-      { token: 'variable.header', foreground: '0451A5' },
-      { token: 'string.url', foreground: 'A31515' },
-      { token: 'string.path', foreground: 'A31515' },
-      { token: 'comment', foreground: '008000', fontStyle: 'italic' },
-    ],
-    colors: {},
-  })
+    monaco.editor.defineTheme('http-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: 'keyword.method', foreground: 'D16969', fontStyle: 'bold' },
+        { token: 'keyword.version', foreground: '0000FF' },
+        { token: 'variable.header', foreground: '0451A5' },
+        { token: 'string.url', foreground: 'A31515' },
+        { token: 'string.path', foreground: 'A31515' },
+        { token: 'comment', foreground: '008000', fontStyle: 'italic' },
+      ],
+      colors: {
+        'editor.background': '#FFFFFF',
+        'editor.foreground': '#000000',
+        'editorLineNumber.foreground': '#237893',
+        'editor.selectionBackground': '#ADD6FF',
+        'editor.lineHighlightBackground': '#F0F0F0',
+        'editorCursor.foreground': '#000000',
+        'editorWhitespace.foreground': '#BFBFBF',
+        'editorIndentGuide.background': '#D3D3D3',
+        'editorIndentGuide.activeBackground': '#939393',
+      },
+    })
+  } catch (error) {
+    console.warn('Failed to define HTTP themes:', error)
+  }
 
   // Define autocomplete suggestions
   monaco.languages.registerCompletionItemProvider('http', {

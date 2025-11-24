@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../constants/translations'
 import { ChevronRight, Folder, File } from 'lucide-react'
 import ContextMenu from './ContextMenu'
+import { ShowDeleteConfirmDialog } from '../../wailsjs/go/main/App'
 
 const getToolsConfig = (t) => ({
   json: { ext: '.json', title: t('explorer.jsonFiles') },
@@ -284,17 +285,22 @@ function FileExplorer() {
       { separator: true },
       {
         label: t('explorer.delete') || '删除',
-        onClick: () => {
+        onClick: async () => {
+          hideContextMenu()
           const itemsToDelete = selectedItems.length > 0 ? selectedItems : [folder]
           const itemNames = itemsToDelete.map(item => item.name).join(', ')
           const confirmMessage = itemsToDelete.length === 1 
             ? `确定要删除文件夹 "${folder.name}" 及其所有内容吗？`
             : `确定要删除以下 ${itemsToDelete.length} 个项目吗？\n${itemNames}`
           
-          if (confirm(confirmMessage)) {
-            itemsToDelete.forEach(item => deleteItem(item))
+          try {
+            const result = await ShowDeleteConfirmDialog(confirmMessage)
+            if (result === '删除') {
+              await Promise.all(itemsToDelete.map(item => deleteItem(item)))
+            }
+          } catch (error) {
+            console.error('Delete confirmation error:', error)
           }
-          hideContextMenu()
         },
         danger: true,
       }
@@ -348,17 +354,22 @@ function FileExplorer() {
       { separator: true },
       {
         label: t('explorer.delete') || '删除',
-        onClick: () => {
+        onClick: async () => {
+          hideContextMenu()
           const itemsToDelete = selectedItems.length > 0 ? selectedItems : [file]
           const itemNames = itemsToDelete.map(item => item.name).join(', ')
           const confirmMessage = itemsToDelete.length === 1 
             ? `确定要删除文件 "${file.name}" 吗？`
             : `确定要删除以下 ${itemsToDelete.length} 个文件吗？\n${itemNames}`
           
-          if (confirm(confirmMessage)) {
-            itemsToDelete.forEach(item => deleteItem(item))
+          try {
+            const result = await ShowDeleteConfirmDialog(confirmMessage)
+            if (result === '删除') {
+              await Promise.all(itemsToDelete.map(item => deleteItem(item)))
+            }
+          } catch (error) {
+            console.error('Delete confirmation error:', error)
           }
-          hideContextMenu()
         },
         danger: true,
       },

@@ -8,6 +8,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -40,6 +41,9 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.initConfig()
+	
+	// Setup window close handler to minimize instead of close
+	// This is done via macOS menu bar behavior
 }
 
 // initConfig initializes configuration
@@ -150,6 +154,19 @@ func (a *App) ShowUnsavedChangesDialog(fileName string) (string, error) {
 		Title:   "未保存的更改",
 		Message: fmt.Sprintf("是否保存对 %s 所做的更改？", fileName),
 		Buttons: []string{"保存", "不保存", "取消"},
+	})
+}
+
+// ShowDeleteConfirmDialog displays a native confirmation dialog for deletion.
+// It returns "yes" if user confirms, "no" or "cancel" otherwise.
+func (a *App) ShowDeleteConfirmDialog(message string) (string, error) {
+	return runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:    runtime.WarningDialog,
+		Title:   "确认删除",
+		Message: message,
+		Buttons: []string{"删除", "取消"},
+		DefaultButton: "取消",
+		CancelButton:  "取消",
 	})
 }
 
@@ -759,22 +776,37 @@ func (a *App) CreateFolder(tool string, parentPath string, folderName string) Fi
 
 // DeleteItem deletes a file or folder
 func (a *App) DeleteItem(itemPath string) FileSystemResponse {
+	log.Printf("DeleteItem called with path: %s", itemPath)
+	
 	// Security check: ensure path is within storage directory
 	absPath, err := filepath.Abs(itemPath)
 	if err != nil {
-		return FileSystemResponse{Success: false, Error: "Invalid path"}
+		log.Printf("DeleteItem: Invalid path - %v", err)
+		return FileSystemResponse{Success: false, Error: fmt.Sprintf("Invalid path: %v", err)}
 	}
 
 	absStorage, _ := filepath.Abs(a.storagePath)
+	log.Printf("DeleteItem: absPath=%s, absStorage=%s", absPath, absStorage)
+	
 	if !strings.HasPrefix(absPath, absStorage) {
-		return FileSystemResponse{Success: false, Error: "Access denied: path outside storage directory"}
+		log.Printf("DeleteItem: Access denied - path outside storage directory")
+		return FileSystemResponse{Success: false, Error: fmt.Sprintf("Access denied: path outside storage directory. Path: %s, Storage: %s", absPath, absStorage)}
+	}
+
+	// Check if file/folder exists
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		log.Printf("DeleteItem: File/folder does not exist: %s", absPath)
+		return FileSystemResponse{Success: false, Error: fmt.Sprintf("File or folder does not exist: %s", absPath)}
 	}
 
 	// Delete file or folder
+	log.Printf("DeleteItem: Attempting to delete: %s", absPath)
 	if err := os.RemoveAll(absPath); err != nil {
+		log.Printf("DeleteItem: Failed to delete - %v", err)
 		return FileSystemResponse{Success: false, Error: fmt.Sprintf("Failed to delete: %v", err)}
 	}
 
+	log.Printf("DeleteItem: Successfully deleted: %s", absPath)
 	return FileSystemResponse{Success: true}
 }
 

@@ -77,6 +77,7 @@ export const translations = {
       binaryContent: '检测到二进制内容',
       decoded: '解码结果：',
       requestPreview: '请求预览：',
+      readOnly: '预览模式（只读）',
     },
 
     // 标签页
@@ -284,6 +285,7 @@ export const translations = {
       binaryContent: 'Binary content detected',
       decoded: 'Decoded:',
       requestPreview: 'Request Preview:',
+      readOnly: 'Preview Mode (Read-only)',
     },
     tabs: {
       close: 'Close',
