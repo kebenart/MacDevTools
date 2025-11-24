@@ -119,21 +119,20 @@ function TabBar() {
             >
               <span className="text-xs truncate flex-1">{tab.name}</span>
 
-              {/* Dirty indicator or close button */}
-              <div className="w-4 h-4 flex items-center justify-center">
-                {isDirty ? (
-                  <div className="w-2 h-2 bg-macos-text-main rounded-full" />
-                ) : (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      closeTab(tab.id)
-                    }}
-                    className="opacity-0 group-hover:opacity-100 hover:bg-macos-item-hover rounded"
-                  >
-                    <X size={14} />
-                  </button>
+              {/* Close button with dirty indicator */}
+              <div className="w-4 h-4 flex items-center justify-center relative">
+                {isDirty && (
+                  <div className="absolute w-1.5 h-1.5 bg-macos-text-main rounded-full -top-1 -right-1" />
                 )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    closeTab(tab.id)
+                  }}
+                  className="opacity-0 group-hover:opacity-100 hover:bg-macos-item-hover rounded"
+                >
+                  <X size={14} />
+                </button>
               </div>
             </div>
           )

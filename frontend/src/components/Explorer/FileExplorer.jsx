@@ -53,6 +53,8 @@ function FileExplorer() {
   const [contextMenu, setContextMenu] = useState(null)
   const [renamingItem, setRenamingItem] = useState(null)
   const [renameValue, setRenameValue] = useState('')
+  const [selectedItems, setSelectedItems] = useState([])
+  const [lastClickTime, setLastClickTime] = useState(0)
 
   const currentFiles = fileSystem[currentTool] || []
   const toolsConfig = getToolsConfig(t)
@@ -75,7 +77,9 @@ function FileExplorer() {
       const item = findItem(currentFiles, renamingItemId)
       if (item) {
         setRenamingItem(item.id)
-        setRenameValue(item.name)
+        // 文件只编辑不带后缀的名字，文件夹编辑完整名字
+        const { baseName } = getNameParts(item.name, item.type === 'folder')
+        setRenameValue(baseName)
       }
       clearRenaming()
     }
@@ -103,6 +107,52 @@ function FileExplorer() {
     const { baseName } = getNameParts(item.name, item.type === 'folder')
     setRenameValue(baseName)
     hideContextMenu()
+  }
+
+  // Handle file selection
+  const handleItemClick = (e, item) => {
+    e.stopPropagation()
+    
+    const currentTime = Date.now()
+    const timeDiff = currentTime - lastClickTime
+    
+    if (timeDiff < 300) { // Double click detected
+      // Open file on double click
+      if (item.type === 'file') {
+        openFile(item.id, currentTool)
+      } else {
+        toggleFolder(item.id)
+      }
+    } else { // Single click
+      // Select item on single click
+      if (e.metaKey || e.shiftKey) {
+        // Multi-select support
+        setSelectedItems(prev => {
+          if (e.shiftKey && prev.length > 0) {
+            // Range selection (simplified - just add current item)
+            return [...prev, item]
+          } else {
+            // Toggle selection with Cmd key
+            const isSelected = prev.some(selected => selected.id === item.id)
+            return isSelected ? prev.filter(selected => selected.id !== item.id) : [...prev, item]
+          }
+        })
+      } else {
+        // Single selection
+        setSelectedItems([item])
+      }
+      setSelectedItem(item)
+    }
+    
+    setLastClickTime(currentTime)
+  }
+
+  // Clear selection when clicking on empty area
+  const handleBackgroundClick = (e) => {
+    if (e.target === e.currentTarget) {
+      setSelectedItems([])
+      setSelectedItem(null)
+    }
   }
 
   // Confirm rename
@@ -235,8 +285,14 @@ function FileExplorer() {
       {
         label: t('explorer.delete') || '删除',
         onClick: () => {
-          if (confirm(`确定要删除文件夹 "${folder.name}" 及其所有内容吗？`)) {
-            deleteItem(folder)
+          const itemsToDelete = selectedItems.length > 0 ? selectedItems : [folder]
+          const itemNames = itemsToDelete.map(item => item.name).join(', ')
+          const confirmMessage = itemsToDelete.length === 1 
+            ? `确定要删除文件夹 "${folder.name}" 及其所有内容吗？`
+            : `确定要删除以下 ${itemsToDelete.length} 个项目吗？\n${itemNames}`
+          
+          if (confirm(confirmMessage)) {
+            itemsToDelete.forEach(item => deleteItem(item))
           }
           hideContextMenu()
         },
@@ -293,8 +349,14 @@ function FileExplorer() {
       {
         label: t('explorer.delete') || '删除',
         onClick: () => {
-          if (confirm(`确定要删除文件 "${file.name}" 吗？`)) {
-            deleteItem(file)
+          const itemsToDelete = selectedItems.length > 0 ? selectedItems : [file]
+          const itemNames = itemsToDelete.map(item => item.name).join(', ')
+          const confirmMessage = itemsToDelete.length === 1 
+            ? `确定要删除文件 "${file.name}" 吗？`
+            : `确定要删除以下 ${itemsToDelete.length} 个文件吗？\n${itemNames}`
+          
+          if (confirm(confirmMessage)) {
+            itemsToDelete.forEach(item => deleteItem(item))
           }
           hideContextMenu()
         },
@@ -315,18 +377,16 @@ function FileExplorer() {
         return (
           <div key={item.id}>
             <div
-              className="flex items-center gap-2 py-1 px-2 cursor-pointer transition-colors"
+              className={`flex items-center gap-2 py-1 px-2 cursor-pointer transition-colors`}
               style={{
                 paddingLeft: `${level * 12 + 8}px`,
-                backgroundColor: isSelected ? 'var(--macos-item-hover)' : 'transparent',
+                backgroundColor: selectedItems.some(selected => selected.id === item.id) ? 'var(--macos-item-hover)' : 'transparent',
               }}
-              onClick={(e) => {
+              onClick={(e) => handleItemClick(e, item)}
+              onContextMenu={(e) => {
                 e.stopPropagation()
                 setSelectedItem(item)
-                if (!isRenaming) toggleFolder(item.id)
-              }}
-              onContextMenu={(e) => {
-                setSelectedItem(item)
+                setSelectedItems([item])
                 handleFolderContext(e, item)
               }}
               onMouseEnter={(e) => {
@@ -373,19 +433,17 @@ function FileExplorer() {
         return (
           <div
             key={item.id}
-            className="flex items-center gap-2 py-1 px-2 cursor-pointer transition-colors"
+            className={`flex items-center gap-2 py-1 px-2 cursor-pointer transition-colors`}
             style={{
               paddingLeft: `${level * 12 + 20}px`,
-              backgroundColor: isActive ? 'var(--macos-item-active)' : isSelected ? 'var(--macos-item-hover)' : 'transparent',
+              backgroundColor: isActive ? 'var(--macos-item-active)' : selectedItems.some(selected => selected.id === item.id) ? 'var(--macos-item-hover)' : 'transparent',
               color: isActive ? '#ffffff' : 'var(--macos-text-main)',
             }}
-            onClick={(e) => {
+            onClick={(e) => handleItemClick(e, item)}
+            onContextMenu={(e) => {
               e.stopPropagation()
               setSelectedItem(item)
-              if (!isRenaming) openFile(item.id, currentTool)
-            }}
-            onContextMenu={(e) => {
-              setSelectedItem(item)
+              setSelectedItems([item])
               handleFileContext(e, item)
             }}
             onMouseEnter={(e) => {
@@ -453,7 +511,7 @@ function FileExplorer() {
         </div>
 
         {/* File List */}
-        <div className="flex-1 overflow-y-auto pt-1" onContextMenu={handleBackgroundContext}>
+        <div className="flex-1 overflow-y-auto pt-1" onContextMenu={handleBackgroundContext} onClick={handleBackgroundClick}>
           {currentFiles.length === 0 ? (
             <div className="px-5 py-4 text-sm text-center" style={{ color: 'var(--macos-text-sub)' }}>
               {t('explorer.empty') || '右键创建文件'}

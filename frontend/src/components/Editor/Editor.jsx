@@ -57,6 +57,26 @@ function Editor() {
     
     // Store editor reference in store for toolbar access
     setEditorRef(editor)
+
+    // Add format action
+    editor.addAction({
+      id: 'format-document',
+      label: 'Format Document',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL],
+      run: () => {
+        useAppStore.getState().formatActiveFile()
+      },
+    })
+
+    // Add toggle preview action, overriding Cmd+G
+    editor.addAction({
+      id: 'toggle-preview',
+      label: 'Toggle Preview',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyG],
+      run: () => {
+        useAppStore.getState().togglePreview()
+      },
+    })
     
     // Setup system clipboard integration (minimal - won't interfere with normal editing)
     setupEditorClipboard(monaco, editor, showToast, t)

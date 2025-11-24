@@ -25,6 +25,7 @@ function Toolbar() {
     showToast,
     isLoading,
     setLoading,
+    formatActiveFile,
     editorRef,
   } = useAppStore()
   const { t } = useTranslation()
@@ -34,43 +35,21 @@ function Toolbar() {
   const handleAction1 = async () => {
     if (!activeFileId || isLoading) return
 
-    setLoading(true)
-    let result
-    try {
-      switch (currentTool) {
-        case 'json':
-          result = await FormatJSON(content)
-          if (result.error) {
-            showToast(result.error, 'error')
-          } else {
-            updateFileContent(activeFileId, result.result)
-            showToast(t('messages.success.jsonFormatted'), 'success')
-          }
-          break
-
-        case 'xml':
-          result = await FormatXML(content)
-          if (result.error) {
-            showToast(result.error, 'error')
-          } else {
-            updateFileContent(activeFileId, result.result)
-            showToast(t('messages.success.xmlFormatted'), 'success')
-          }
-          break
-
-        case 'base64':
-          result = await EncodeBase64(content)
-          updateFileContent(activeFileId, result.result)
-          showToast(t('messages.success.base64Encoded'), 'success')
-          break
-
-        case 'http':
-          // Parse HTTP request and send
-          await handleHTTPSend()
-          break
-      }
-    } finally {
-      setLoading(false)
+    switch (currentTool) {
+      case 'json':
+      case 'xml':
+        await formatActiveFile()
+        break
+      case 'base64':
+        setLoading(true)
+        const result = await EncodeBase64(content)
+        updateFileContent(activeFileId, result.result)
+        showToast(t('messages.success.base64Encoded'), 'success')
+        setLoading(false)
+        break
+      case 'http':
+        await handleHTTPSend()
+        break
     }
   }
 
@@ -248,7 +227,6 @@ function Toolbar() {
       <button
         onClick={handleAction1}
         disabled={!activeFileId || isLoading}
-        data-format-action="true"
         className="px-3 py-1 bg-macos-accent text-white rounded text-xs
           hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
       >
