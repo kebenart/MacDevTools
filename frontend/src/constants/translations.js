@@ -125,7 +125,7 @@ export const translations = {
       version: '版本',
       author: '作者',
       license: '许可证',
-      description: '使用 Wails 和 React 构建的高性能开发者工具箱，旨在提供类似原生 macOS 应用的极致体验。',
+      description: '使用 Wails 和 React 构建的高性能开发者工具箱,旨在提供类似原生 macOS 应用的极致体验。',
     },
 
     // 快捷键
@@ -150,6 +150,7 @@ export const translations = {
       duplicate: { name: '创建副本', description: '创建文件副本' },
       rename: { name: '重命名', description: '重命名选中的文件' },
       delete: { name: '删除', description: '删除选中的文件' },
+      format: { name: '格式化', description: '格式化当前文件内容' },
     },
 
     // 消息提示
@@ -186,11 +187,11 @@ export const translations = {
         exportFailed: '导出失败',
         importFailed: '导入失败',
         invalidFileFormat: '文件格式不正确',
-        invalidHttpFormat: '无效的 HTTP 请求格式，期望：方法 URL',
-        invalidUrl: '无效的 URL：{url}',
-        requestTimeout: '请求超时：服务器在 30 秒内未响应',
-        connectionRefused: '连接被拒绝：无法连接到 {url}',
-        dnsError: 'DNS 错误：找不到 {url} 的主机',
+        invalidHttpFormat: '无效的 HTTP 请求格式,期望:方法 URL',
+        invalidUrl: '无效的 URL:{url}',
+        requestTimeout: '请求超时:服务器在 30 秒内未响应',
+        connectionRefused: '连接被拒绝:无法连接到 {url}',
+        dnsError: 'DNS 错误:找不到 {url} 的主机',
         clipboardEmpty: '剪贴板为空',
         copyFailed: '复制失败',
         pasteFailed: '粘贴失败',
@@ -213,9 +214,9 @@ export const translations = {
 
     // 确认对话框
     confirm: {
-      deleteFolder: '确定要删除文件夹 "{name}" 及其所有内容吗？',
-      deleteFile: '确定要删除文件 "{name}" 吗？',
-      importOverwrite: '导入将覆盖当前所有文件，确定继续吗？',
+      deleteFolder: '确定要删除文件夹 "{name}" 及其所有内容吗?',
+      deleteFile: '确定要删除文件 "{name}" 吗?',
+      importOverwrite: '导入将覆盖当前所有文件,确定继续吗?',
     },
   },
 
@@ -270,6 +271,7 @@ export const translations = {
       save: 'Save',
       search: 'Search',
       copy: 'Copy',
+      paste: 'Paste',
       preview: 'Preview',
       globalSearchTooltip: 'Global Search (Cmd+Shift+F)',
     },
@@ -347,6 +349,7 @@ export const translations = {
       duplicate: { name: 'Duplicate', description: 'Duplicate file' },
       rename: { name: 'Rename', description: 'Rename selected file' },
       delete: { name: 'Delete', description: 'Delete selected file' },
+      format: { name: 'Format', description: 'Format current file content' },
     },
     messages: {
       success: {
@@ -430,6 +433,8 @@ export const defaultShortcuts = {
   duplicate: { key: 'd', modifiers: ['meta'] },
   rename: { key: 'Enter', modifiers: [] },
   delete: { key: 'Backspace', modifiers: ['meta'] },
+  // 格式化快捷键
+  format: { key: 'l', modifiers: ['meta', 'shift'] },
 };
 
 // 快捷键映射到功能的配置
@@ -448,6 +453,7 @@ export const shortcutActions = {
   save: 'save',
   saveAll: 'saveAll',
   find: 'find',
+  format: 'format',
 };
 
 // 格式化快捷键显示

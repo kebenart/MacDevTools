@@ -43,15 +43,27 @@ func main() {
 		runtime.EventsEmit(app.ctx, "menu:close-tab")
 	})
 
-	// 编辑菜单 - 标准编辑操作使用 nil 回调让系统处理
+	// 编辑菜单 - [修复关键] 手动发射事件，而不是让系统默认处理
 	editMenu := appMenu.AddSubmenu("编辑")
-	editMenu.AddText("撤销", keys.CmdOrCtrl("z"), nil)
-	editMenu.AddText("重做", keys.CmdOrCtrl("shift+z"), nil)
+	editMenu.AddText("撤销", keys.CmdOrCtrl("z"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:undo")
+	})
+	editMenu.AddText("重做", keys.CmdOrCtrl("shift+z"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:redo")
+	})
 	editMenu.AddSeparator()
-	editMenu.AddText("剪切", keys.CmdOrCtrl("x"), nil)
-	editMenu.AddText("复制", keys.CmdOrCtrl("c"), nil)
-	editMenu.AddText("粘贴", keys.CmdOrCtrl("v"), nil)
-	editMenu.AddText("全选", keys.CmdOrCtrl("a"), nil)
+	editMenu.AddText("剪切", keys.CmdOrCtrl("x"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:cut")
+	})
+	editMenu.AddText("复制", keys.CmdOrCtrl("c"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:copy")
+	})
+	editMenu.AddText("粘贴", keys.CmdOrCtrl("v"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:paste")
+	})
+	editMenu.AddText("全选", keys.CmdOrCtrl("a"), func(_ *menu.CallbackData) {
+		runtime.EventsEmit(app.ctx, "menu:select-all")
+	})
 	editMenu.AddSeparator()
 	editMenu.AddText("查找", keys.CmdOrCtrl("f"), func(_ *menu.CallbackData) {
 		runtime.EventsEmit(app.ctx, "menu:find")
@@ -112,26 +124,16 @@ func main() {
 			app,
 		},
 
-		// ======== macOS Native Configuration (CRITICAL) ========
+		// ======== macOS Native Configuration ========
 		Mac: &mac.Options{
-			// Hide title bar but keep traffic lights (red/yellow/green buttons)
-			// Content extends under the title bar area
-			TitleBar: mac.TitleBarHiddenInset(),
-
-			// Enable window translucency for backdrop effects
-			WindowIsTranslucent: true,
-
-			// Make webview background transparent
+			TitleBar:             mac.TitleBarHiddenInset(),
+			WindowIsTranslucent:  true,
 			WebviewIsTransparent: true,
-
-			// About info in native menu
 			About: &mac.AboutInfo{
 				Title:   "MacDevTools",
 				Message: "A high-performance developer toolkit built with Wails and React.\n\nVersion: 1.0.0\nAuthor: Wails Developer\nLicense: MIT",
-				Icon:    nil, // You can embed an icon here
+				Icon:    nil,
 			},
-
-			// Appearance: auto-adapt to system theme
 			Appearance: mac.NSAppearanceNameDarkAqua,
 		},
 	})

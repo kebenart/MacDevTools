@@ -248,6 +248,7 @@ function Toolbar() {
       <button
         onClick={handleAction1}
         disabled={!activeFileId || isLoading}
+        data-format-action="true"
         className="px-3 py-1 bg-macos-accent text-white rounded text-xs
           hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
       >
