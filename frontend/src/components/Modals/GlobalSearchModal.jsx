@@ -1,36 +1,44 @@
 import { useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../constants/translations'
-import { X, Search } from 'lucide-react'
-// 引入后端搜索方法
-import { GlobalSearch, ReadFileContent, SaveFileContent } from '../../wailsjs/go/main/App'
+import { X, Search, Loader2 } from 'lucide-react'
+// 引入后端方法
+import { GlobalSearch, ReadFileContent, SaveFileContent, ShowConfirmDialog, ShowMessageDialog } from '../../wailsjs/go/main/App'
+
+// 正则转义辅助函数
+const escapeRegExp = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 /**
  * GlobalSearchModal Component
+ * * 全局搜索与替换
+ * - 搜索：使用 Go 后端遍历
+ * - 替换：智能判断文件状态（已打开/未打开）进行处理
  */
 function GlobalSearchModal() {
   const {
     isGlobalSearchOpen,
     closeGlobalSearch,
     fileSystem,
+    fileContents, // 获取文件内容缓存
     findItemById,
     openFile,
     updateFileContent,
     setCurrentTool,
     currentTool,
-    getFileContent,
-    storagePath,
   } = useAppStore()
   const { t } = useTranslation()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [replaceQuery, setReplaceQuery] = useState('')
   const [results, setResults] = useState([])
-  const [isSearching, setIsSearching] = useState(false) // 添加搜索状态
+  const [isSearching, setIsSearching] = useState(false)
+  const [isReplacing, setIsReplacing] = useState(false)
 
   if (!isGlobalSearchOpen) return null
 
-  // [修复] 使用后端搜索
+  // 执行后端搜索
   const performSearch = async () => {
     if (!searchQuery) {
       setResults([])
@@ -50,66 +58,124 @@ function GlobalSearchModal() {
     }
   }
 
+  // 执行智能替换
   const performReplace = async () => {
-    if (!searchQuery || !confirm(
-      t('globalSearch.confirmReplace', { 
-        search: searchQuery, 
-        replace: replaceQuery, 
-        count: results.length 
-      })
-    )) {
+    if (!searchQuery) {
+      await ShowMessageDialog('提示', '请输入要搜索的内容')
+      return
+    }
+    
+    const confirmMessage = t('globalSearch.confirmReplace', { 
+      search: searchQuery, 
+      replace: replaceQuery, 
+      count: results.length 
+    }) || `确定要将 "${searchQuery}" 替换为 "${replaceQuery}" 吗？\n这将影响 ${results.length} 个文件。`
+    
+    const userChoice = await ShowConfirmDialog('确认替换', confirmMessage)
+    if (userChoice !== '确定') {
       return
     }
 
+    setIsReplacing(true)
     let totalReplacements = 0
+    let processedFiles = 0
+    let failedFiles = 0
+    
+    // 创建不区分大小写的正则（为了匹配搜索结果）
+    const searchRegex = new RegExp(escapeRegExp(searchQuery), 'gi')
 
-    // Process each result file
-    for (const result of results) {
-      try {
-        // Get file path
-        const file = findItemById(fileSystem[result.toolName], result.fileId)
-        if (!file || !file.path) {
-          continue
-        }
+    try {
+      // 遍历所有搜索结果
+      for (const result of results) {
+        try {
+          const item = findItemById(fileSystem[result.toolName], result.fileId)
+          if (!item || !item.path) {
+            console.warn(`File not found: ${result.fileId}`)
+            failedFiles++
+            continue
+          }
 
-        // Read file content from disk
-        const readResult = await ReadFileContent(file.path)
-        if (!readResult.success || !readResult.data) {
-          continue
-        }
+          let content = ''
+          let isFileOpen = false
 
-        let content = readResult.data
-        const originalContent = content
-
-        // Perform replacement (case-sensitive)
-        // Count occurrences before replacement
-        const regex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
-        const matches = content.match(regex)
-        const matchCount = matches ? matches.length : 0
-
-        if (matchCount > 0) {
-          // Replace all occurrences
-          content = content.replace(regex, replaceQuery)
-          
-          // Save the file
-          const saveResult = await SaveFileContent(file.path, content)
-          if (saveResult.success) {
-            totalReplacements += matchCount
-            
-            // Update in-memory cache if file is open
-            const cachedContent = getFileContent(result.fileId)
-            if (cachedContent) {
-              updateFileContent(result.fileId, content)
+          // 1. 检查文件是否已在编辑器中打开（有缓存）
+          const cachedFile = fileContents[result.fileId]
+          if (cachedFile && cachedFile.content) {
+            content = cachedFile.content
+            isFileOpen = true
+          } else {
+            // 2. 未打开的文件，从磁盘读取
+            const resp = await ReadFileContent(item.path)
+            if (resp && resp.success && resp.data) {
+              content = resp.data
+            } else {
+              console.warn(`Failed to read file: ${item.path}`, resp)
+              failedFiles++
+              continue
             }
           }
-        }
-      } catch (error) {
-        console.error(`Failed to replace in file ${result.fileId}:`, error)
-      }
-    }
 
-    alert(t('globalSearch.replaceSuccess', { count: totalReplacements }) || `已替换 ${totalReplacements} 处`)
-    performSearch() // Refresh results
+          if (!content) {
+            console.warn(`Empty content for file: ${item.path}`)
+            failedFiles++
+            continue
+          }
+
+          // 3. 执行替换
+          // 检查是否真的包含内容（不区分大小写）
+          const matches = content.match(searchRegex)
+          if (!matches || matches.length === 0) {
+            console.warn(`No matches found in file: ${item.path} (may be case mismatch)`)
+            continue
+          }
+
+          const count = matches.length
+          const newContent = content.replace(searchRegex, replaceQuery)
+          
+          if (newContent === content) {
+            console.warn(`No changes after replace in file: ${item.path}`)
+            continue
+          }
+
+          totalReplacements += count
+
+          // 4. 保存更改
+          if (isFileOpen) {
+            // 如果文件已打开，更新 Store（这会触发自动保存逻辑，并更新 UI）
+            updateFileContent(result.fileId, newContent)
+            processedFiles++
+          } else {
+            // 如果文件未打开，直接写入磁盘
+            const saveResp = await SaveFileContent(item.path, newContent)
+            if (saveResp && saveResp.success) {
+              processedFiles++
+            } else {
+              console.error(`Failed to save file ${item.path}:`, saveResp)
+              failedFiles++
+            }
+          }
+        } catch (err) {
+          console.error(`Error processing file ${result.fileId}:`, err)
+          failedFiles++
+        }
+      }
+
+      // 显示结果
+      let message = `已替换 ${totalReplacements} 处，处理了 ${processedFiles} 个文件`
+      if (failedFiles > 0) {
+        message += `，${failedFiles} 个文件处理失败`
+      }
+      await ShowMessageDialog('替换完成', message)
+      
+      // 替换完成后重新搜索以刷新列表
+      await performSearch()
+
+    } catch (error) {
+      console.error("Replace failed:", error)
+      await ShowMessageDialog('替换失败', "替换失败: " + (error.message || error))
+    } finally {
+      setIsReplacing(false)
+    }
   }
 
   const handleResultClick = (result) => {
@@ -168,19 +234,20 @@ function GlobalSearchModal() {
           <div className="flex gap-3 justify-end">
             <button
               onClick={performSearch}
-              disabled={isSearching}
+              disabled={isSearching || isReplacing}
               className="px-4 py-2 bg-macos-accent text-white rounded text-sm
                 hover:brightness-110 flex items-center gap-2 disabled:opacity-50"
             >
-              <Search size={14} />
+              {isSearching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
               {isSearching ? '搜索中...' : t('globalSearch.search')}
             </button>
             <button
               onClick={performReplace}
-              disabled={results.length === 0}
+              disabled={results.length === 0 || isReplacing}
               className="px-4 py-2 bg-macos-error text-white rounded text-sm
-                hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
+              {isReplacing && <Loader2 size={14} className="animate-spin" />}
               {t('globalSearch.replaceAll')}
             </button>
           </div>

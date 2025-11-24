@@ -27,7 +27,9 @@ function Editor() {
     theme,
     showToast,
     setEditorRef,
-  } = useAppStore()
+    editorFontSize,
+    editorFontFamily,
+    } = useAppStore()
   const { t } = useTranslation()
 
   const editorRef = useRef(null)
@@ -66,6 +68,20 @@ function Editor() {
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyG, () => {
       useAppStore.getState().togglePreview()
     })
+    
+    // [修复] 覆盖 Monaco 默认的格式化快捷键，使用自定义的 Cmd+Shift+L
+    // 禁用 Monaco 的默认格式化快捷键（Shift+Alt+F / Shift+Option+F）
+    editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF, () => {
+      // Do nothing - let our custom shortcut handle it
+    })
+    
+    // 添加自定义格式化快捷键 Cmd+Shift+L
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL,
+      () => {
+        useAppStore.getState().formatActiveFile()
+      }
+    )
   }
 
   const handleEditorChange = (value) => {
@@ -122,8 +138,8 @@ function Editor() {
         onMount={handleEditorDidMount}
         theme={getEditorTheme()}
         options={{
-          fontFamily: 'Menlo, Monaco, Courier New, monospace',
-          fontSize: 13,
+          fontFamily: editorFontFamily,
+          fontSize: editorFontSize,
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
           wordWrap: 'on',

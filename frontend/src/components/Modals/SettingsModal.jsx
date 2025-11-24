@@ -33,6 +33,10 @@ function SettingsModal() {
     storagePath,
     selectStorageDirectory,
     openStorageInFinder,
+    editorFontSize,
+    editorFontFamily,
+    setEditorFontSize,
+    setEditorFontFamily,
   } = useAppStore()
   const { t } = useTranslation()
 
@@ -284,6 +288,52 @@ function SettingsModal() {
                 }`}
               />
             </button>
+          </div>
+
+          {/* Editor Font Size */}
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-macos-text-main">
+                代码字体大小
+              </div>
+              <div className="text-xs text-macos-text-sub">
+                调整代码区和预览区的字体大小
+              </div>
+            </div>
+            <input
+              type="number"
+              min="8"
+              max="24"
+              value={editorFontSize}
+              onChange={(e) => setEditorFontSize(parseInt(e.target.value) || 13)}
+              className="w-20 px-3 py-1 bg-macos-input border border-macos-border rounded text-macos-text-main text-sm focus:outline-none focus:border-macos-accent"
+            />
+          </div>
+
+          {/* Editor Font Family */}
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-macos-text-main">
+                代码字体
+              </div>
+              <div className="text-xs text-macos-text-sub">
+                选择代码区和预览区的字体
+              </div>
+            </div>
+            <select
+              value={editorFontFamily}
+              onChange={(e) => setEditorFontFamily(e.target.value)}
+              className="px-3 py-1 bg-macos-input border border-macos-border rounded text-macos-text-main text-sm focus:outline-none focus:border-macos-accent min-w-[200px]"
+            >
+              <option value="Menlo, Monaco, Courier New, monospace">Menlo (macOS)</option>
+              <option value="Monaco, Menlo, Courier New, monospace">Monaco</option>
+              <option value="SF Mono, Menlo, Monaco, Courier New, monospace">SF Mono</option>
+              <option value="Consolas, Monaco, Courier New, monospace">Consolas</option>
+              <option value="Courier New, monospace">Courier New</option>
+              <option value="Fira Code, monospace">Fira Code</option>
+              <option value="JetBrains Mono, monospace">JetBrains Mono</option>
+              <option value="Source Code Pro, monospace">Source Code Pro</option>
+            </select>
           </div>
 
           {/* Storage Path */}

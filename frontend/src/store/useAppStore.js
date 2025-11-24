@@ -62,6 +62,10 @@ export const useAppStore = create((set, get) => ({
 
   // Settings
   autoSave: true,
+  
+  // Editor settings
+  editorFontSize: 13,
+  editorFontFamily: 'Menlo, Monaco, Courier New, monospace',
 
   // Shortcuts
   shortcuts: defaultShortcuts,
@@ -856,6 +860,8 @@ export const useAppStore = create((set, get) => ({
   // Settings
   toggleAutoSave: () => set((state) => ({ autoSave: !state.autoSave })),
   setLanguage: (language) => set({ language }),
+  setEditorFontSize: (size) => set({ editorFontSize: size }),
+  setEditorFontFamily: (family) => set({ editorFontFamily: family }),
 
   // Shortcuts
   updateShortcut: (action, shortcut) =>
@@ -928,10 +934,10 @@ export const useAppStore = create((set, get) => ({
 
   // Backup/Restore (exports current memory state for backup)
   exportBackup: () => {
-    const { theme, language, autoSave, shortcuts } = get()
+    const { theme, language, autoSave, editorFontSize, editorFontFamily, shortcuts } = get()
     return JSON.stringify(
       {
-        settings: { theme, language, autoSave },
+        settings: { theme, language, autoSave, editorFontSize, editorFontFamily },
         shortcuts,
       },
       null,
@@ -942,7 +948,13 @@ export const useAppStore = create((set, get) => ({
   importBackup: (data) => {
     try {
       const imported = JSON.parse(data)
-      let newSettings = { theme: 'dark', language: 'zh', autoSave: true }
+      let newSettings = { 
+        theme: 'dark', 
+        language: 'zh', 
+        autoSave: true,
+        editorFontSize: 13,
+        editorFontFamily: 'Menlo, Monaco, Courier New, monospace',
+      }
       let newShortcuts = defaultShortcuts
 
       if (imported.settings) {

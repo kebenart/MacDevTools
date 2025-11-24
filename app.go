@@ -170,6 +170,30 @@ func (a *App) ShowDeleteConfirmDialog(message string) (string, error) {
 	})
 }
 
+// ShowConfirmDialog displays a native confirmation dialog.
+// It returns "确定" if user confirms, "取消" otherwise.
+func (a *App) ShowConfirmDialog(title string, message string) (string, error) {
+	return runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:    runtime.QuestionDialog,
+		Title:   title,
+		Message: message,
+		Buttons: []string{"确定", "取消"},
+		DefaultButton: "确定",
+		CancelButton:  "取消",
+	})
+}
+
+// ShowMessageDialog displays a native message dialog.
+func (a *App) ShowMessageDialog(title string, message string) (string, error) {
+	return runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:    runtime.InfoDialog,
+		Title:   title,
+		Message: message,
+		Buttons: []string{"确定"},
+		DefaultButton: "确定",
+	})
+}
+
 // ========== JSON Tools ==========
 
 type JSONFormatRequest struct {

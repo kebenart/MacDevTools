@@ -20,6 +20,7 @@ export const useMacShortcuts = () => {
     shortcuts,
     saveFile,
     saveAllFiles,
+    formatActiveFile,
     // 文件操作
     selectedItem,
     copyItem,
@@ -241,6 +242,7 @@ export const useMacShortcuts = () => {
           case 'newFolder': createFolder('', 'NewFolder'); break
           case 'save': if (activeFileId) saveFile(activeFileId); break
           case 'saveAll': saveAllFiles(); break
+          case 'format': if (activeFileId) formatActiveFile(); break
           case 'find': 
              // 查找通常由编辑器内部处理，这里可以留空或调用 editor trigger
              if (editorRef) editorRef.trigger('keyboard', 'actions.find');
@@ -305,6 +307,14 @@ export const useMacShortcuts = () => {
             return
           }
 
+          // For format (Cmd+Shift+L), always prevent default to override Monaco's default format
+          if (action === 'format') {
+            e.preventDefault()
+            e.stopPropagation()
+            executeAction(action)
+            return
+          }
+
           e.preventDefault()
           executeAction(action)
           return
@@ -322,7 +332,7 @@ export const useMacShortcuts = () => {
     }
   }, [
     openGlobalSearch, closeTab, activeFileId, togglePreview, toggleExplorer,
-    setCurrentTool, openSettings, shortcuts, saveFile, saveAllFiles,
+    setCurrentTool, openSettings, shortcuts, saveFile, saveAllFiles, formatActiveFile,
     selectedItem, copyItem, cutItem, pasteItem, duplicateItem, deleteItem,
     triggerRename, clipboard, storagePath, currentTool, createFile, createFolder,
     editorRef, t // 添加 editorRef 和 t 到依赖

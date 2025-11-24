@@ -28,6 +28,8 @@ function Preview() {
     showToast,
     previewWidth,
     getHTTPResponse,
+    editorFontSize,
+    editorFontFamily,
   } = useAppStore()
   const { t } = useTranslation()
 
@@ -338,8 +340,8 @@ function Preview() {
           onMount={handleEditorDidMount}
           theme={currentTheme}
           options={{
-            fontFamily: 'Menlo, Monaco, Courier New, monospace',
-            fontSize: 12,
+            fontFamily: editorFontFamily,
+            fontSize: editorFontSize,
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
             wordWrap: 'on',
