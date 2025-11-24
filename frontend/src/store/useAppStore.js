@@ -165,17 +165,66 @@ export const useAppStore = create((set, get) => ({
     set({ activeFileId: fileId })
   },
 
-  closeTab: (fileId) => {
-    const { openTabs, activeFileId } = get()
-    const newTabs = openTabs.filter((tab) => tab.id !== fileId)
-
-    let newActiveId = activeFileId
-    if (activeFileId === fileId) {
-      newActiveId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null
+  // Helper function to check unsaved files
+  checkUnsavedFiles: async (fileIds) => {
+    const dirtyFiles = []
+    for (const fileId of fileIds) {
+      if (get().isFileDirty(fileId)) {
+        const file = get().findItemById(get().fileSystem[get().currentTool], fileId)
+        const fileName = file ? file.name : '未知文件'
+        dirtyFiles.push({ id: fileId, name: fileName })
+      }
     }
 
-    // Remove from content cache
+    if (dirtyFiles.length === 0) {
+      return { shouldContinue: true, filesToSave: [] }
+    }
+
+    if (dirtyFiles.length === 1) {
+      const userChoice = await App.ShowUnsavedChangesDialog(dirtyFiles[0].name)
+      switch (userChoice) {
+        case '保存':
+          return { shouldContinue: true, filesToSave: [dirtyFiles[0].id] }
+        case '不保存':
+          return { shouldContinue: true, filesToSave: [] }
+        case '取消':
+          return { shouldContinue: false, filesToSave: [] }
+        default:
+          return { shouldContinue: false, filesToSave: [] }
+      }
+    } else {
+      // For multiple files, ask once and apply to all
+      const userChoice = await App.ShowUnsavedChangesDialog(`${dirtyFiles.length} 个未保存的文件`)
+      switch (userChoice) {
+        case '保存':
+          return { shouldContinue: true, filesToSave: dirtyFiles.map(f => f.id) }
+        case '不保存':
+          return { shouldContinue: true, filesToSave: [] }
+        case '取消':
+          return { shouldContinue: false, filesToSave: [] }
+        default:
+          return { shouldContinue: false, filesToSave: [] }
+      }
+    }
+  },
+
+  closeTab: async (fileId) => {
+    const result = await get().checkUnsavedFiles([fileId])
+    if (!result.shouldContinue) {
+      return
+    }
+
+    if (result.filesToSave.length > 0) {
+      await get().saveFile(fileId)
+    }
+
     set((state) => {
+      const newTabs = state.openTabs.filter((tab) => tab.id !== fileId)
+      let newActiveId = state.activeFileId
+      if (state.activeFileId === fileId) {
+        newActiveId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null
+      }
+
       const newContents = { ...state.fileContents }
       delete newContents[fileId]
       return { openTabs: newTabs, activeFileId: newActiveId, fileContents: newContents }
@@ -183,25 +232,60 @@ export const useAppStore = create((set, get) => ({
   },
 
   // 关闭所有标签页
-  closeAllTabs: () => {
+  closeAllTabs: async () => {
+    const { openTabs } = get()
+    const tabIds = openTabs.map(tab => tab.id)
+    
+    const result = await get().checkUnsavedFiles(tabIds)
+    if (!result.shouldContinue) {
+      return
+    }
+
+    // Save files that need to be saved
+    for (const fileId of result.filesToSave) {
+      await get().saveFile(fileId)
+    }
+
     set({ openTabs: [], activeFileId: null, fileContents: {} })
   },
 
   // 关闭其他标签页
-  closeOtherTabs: (fileId) => {
+  closeOtherTabs: async (fileId) => {
     const { openTabs, fileContents } = get()
     const tab = openTabs.find((t) => t.id === fileId)
     if (!tab) return
+
+    const otherTabIds = openTabs.filter(t => t.id !== fileId).map(t => t.id)
+    const result = await get().checkUnsavedFiles(otherTabIds)
+    if (!result.shouldContinue) {
+      return
+    }
+
+    // Save files that need to be saved
+    for (const fileId of result.filesToSave) {
+      await get().saveFile(fileId)
+    }
 
     const newContents = { [fileId]: fileContents[fileId] }
     set({ openTabs: [tab], activeFileId: fileId, fileContents: newContents })
   },
 
   // 关闭左侧标签页
-  closeLeftTabs: (fileId) => {
+  closeLeftTabs: async (fileId) => {
     const { openTabs, activeFileId, fileContents } = get()
     const index = openTabs.findIndex((t) => t.id === fileId)
     if (index <= 0) return
+
+    const leftTabIds = openTabs.slice(0, index).map(t => t.id)
+    const result = await get().checkUnsavedFiles(leftTabIds)
+    if (!result.shouldContinue) {
+      return
+    }
+
+    // Save files that need to be saved
+    for (const fileId of result.filesToSave) {
+      await get().saveFile(fileId)
+    }
 
     const newTabs = openTabs.slice(index)
     const newContents = {}
@@ -220,10 +304,21 @@ export const useAppStore = create((set, get) => ({
   },
 
   // 关闭右侧标签页
-  closeRightTabs: (fileId) => {
+  closeRightTabs: async (fileId) => {
     const { openTabs, activeFileId, fileContents } = get()
     const index = openTabs.findIndex((t) => t.id === fileId)
     if (index < 0 || index >= openTabs.length - 1) return
+
+    const rightTabIds = openTabs.slice(index + 1).map(t => t.id)
+    const result = await get().checkUnsavedFiles(rightTabIds)
+    if (!result.shouldContinue) {
+      return
+    }
+
+    // Save files that need to be saved
+    for (const fileId of result.filesToSave) {
+      await get().saveFile(fileId)
+    }
 
     const newTabs = openTabs.slice(0, index + 1)
     const newContents = {}
@@ -313,22 +408,18 @@ export const useAppStore = create((set, get) => ({
   },
 
   deleteItem: async (item) => {
-    const { openTabs } = get()
-
-    try {
-      const result = await App.DeleteItem(item.path)
-      if (result.success) {
-        // Close tab if it's open
-        if (openTabs.some((tab) => tab.id === item.id)) {
-          get().closeTab(item.id)
-        }
-        await get().refreshFileList()
-        get().showToast('删除成功', 'success')
-      } else {
-        get().showToast(result.error, 'error')
+    console.log('Deleting item:', item)
+    const result = await App.DeleteItem(item.path)
+    console.log('Delete result:', result)
+    if (result.success) {
+      if (get().openTabs.some((tab) => tab.id === item.id)) {
+        await get().closeTab(item.id)
       }
-    } catch (error) {
-      get().showToast('删除失败', 'error')
+      await get().refreshFileList()
+      get().showToast('删除成功', 'success')
+    } else {
+      console.error('Delete failed:', result.error)
+      get().showToast(result.error, 'error')
     }
   },
 
@@ -622,6 +713,42 @@ export const useAppStore = create((set, get) => ({
       }
     }
     return value || key
+  },
+
+  // Format active file
+  formatActiveFile: async () => {
+    const { activeFileId, getFileContent, updateFileContent, showToast, t, setLoading, currentTool } = get()
+    if (!activeFileId) return
+
+    setLoading(true)
+    const content = getFileContent(activeFileId)
+    let result
+
+    try {
+      switch (currentTool) {
+        case 'json':
+          result = await App.FormatJSON(content)
+          if (result.error) {
+            showToast(result.error, 'error')
+          } else {
+            updateFileContent(activeFileId, result.result)
+            showToast(t('messages.success.jsonFormatted'), 'success')
+          }
+          break
+        case 'xml':
+          result = await App.FormatXML(content)
+          if (result.error) {
+            showToast(result.error, 'error')
+          } else {
+            updateFileContent(activeFileId, result.result)
+            showToast(t('messages.success.xmlFormatted'), 'success')
+          }
+          break
+        // Add other formatters here if needed
+      }
+    } finally {
+      setLoading(false)
+    }
   },
 
   // Backup/Restore (exports current memory state for backup)

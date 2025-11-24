@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -121,7 +122,10 @@ func (a *App) SaveFileDialog(data string) error {
 		Title:           "Save Backup File",
 		DefaultFilename: filename,
 		Filters: []runtime.FileFilter{
-			{DisplayName: "JSON Files (*.json)", Pattern: "*.json"},
+			{
+				DisplayName: "JSON Files (*.json)",
+				Pattern:     "*.json",
+			},
 		},
 	})
 
@@ -138,6 +142,17 @@ func (a *App) SaveFileDialog(data string) error {
 	return os.WriteFile(file, []byte(data), 0600)
 }
 
+// ShowUnsavedChangesDialog displays a dialog for unsaved changes.
+// It returns "save", "dontsave", or "cancel".
+func (a *App) ShowUnsavedChangesDialog(fileName string) (string, error) {
+	return runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:    runtime.QuestionDialog,
+		Title:   "未保存的更改",
+		Message: fmt.Sprintf("是否保存对 %s 所做的更改？", fileName),
+		Buttons: []string{"保存", "不保存", "取消"},
+	})
+}
+
 // ========== JSON Tools ==========
 
 type JSONFormatRequest struct {
@@ -149,42 +164,20 @@ type JSONFormatResponse struct {
 	Error  string `json:"error"`
 }
 
-// FormatJSON formats JSON with indentation while preserving key order
+// FormatJSON formats JSON with indentation while preserving key order.
 func (a *App) FormatJSON(content string) JSONFormatResponse {
-	// First validate that it's valid JSON
-	var test interface{}
-	if err := json.Unmarshal([]byte(content), &test); err != nil {
-		return JSONFormatResponse{
-			Result: "",
-			Error:  fmt.Sprintf("Invalid JSON: %v", err),
-		}
-	}
-
-	// Use a custom decoder with UseNumber to preserve number precision
-	// and ensure key order is maintained
-	decoder := json.NewDecoder(strings.NewReader(content))
-	decoder.UseNumber()
-	
-	var data interface{}
-	if err := decoder.Decode(&data); err != nil {
-		return JSONFormatResponse{
-			Result: "",
-			Error:  fmt.Sprintf("Invalid JSON: %v", err),
-		}
-	}
-
-	// Marshal with indentation
-	// Go 1.21+ maintains map insertion order
-	formatted, err := json.MarshalIndent(data, "", "  ")
+	var out bytes.Buffer
+	err := json.Indent(&out, []byte(content), "", "  ")
 	if err != nil {
+		// If Indent fails, it means the JSON is invalid. We can provide a more specific error.
 		return JSONFormatResponse{
 			Result: "",
-			Error:  fmt.Sprintf("Format error: %v", err),
+			Error:  fmt.Sprintf("Invalid JSON format: %v", err),
 		}
 	}
 
 	return JSONFormatResponse{
-		Result: string(formatted),
+		Result: out.String(),
 		Error:  "",
 	}
 }
