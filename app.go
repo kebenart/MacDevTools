@@ -29,7 +29,12 @@ type App struct {
 
 // AppConfig stores user preferences
 type AppConfig struct {
-	StoragePath string `json:"storagePath"`
+	StoragePath      string `json:"storagePath"`
+	Theme            string `json:"theme,omitempty"`
+	Language         string `json:"language,omitempty"`
+	AutoSave         bool   `json:"autoSave,omitempty"`
+	EditorFontSize   int    `json:"editorFontSize,omitempty"`
+	EditorFontFamily string `json:"editorFontFamily,omitempty"`
 }
 
 // NewApp creates a new App application struct
@@ -616,6 +621,50 @@ func (a *App) GetStoragePath() string {
 	return a.storagePath
 }
 
+// GetUserSettings returns user settings from config file
+func (a *App) GetUserSettings() map[string]interface{} {
+	config := a.loadConfig()
+	return map[string]interface{}{
+		"theme":            config.Theme,
+		"language":         config.Language,
+		"autoSave":         config.AutoSave,
+		"editorFontSize":   config.EditorFontSize,
+		"editorFontFamily": config.EditorFontFamily,
+	}
+}
+
+// SaveUserSettings saves user settings to config file
+func (a *App) SaveUserSettings(settings map[string]interface{}) FileSystemResponse {
+	config := a.loadConfig()
+	
+	// Update config with new settings
+	if theme, ok := settings["theme"].(string); ok && theme != "" {
+		config.Theme = theme
+	}
+	if language, ok := settings["language"].(string); ok && language != "" {
+		config.Language = language
+	}
+	if autoSave, ok := settings["autoSave"].(bool); ok {
+		config.AutoSave = autoSave
+	}
+	if fontSize, ok := settings["editorFontSize"].(float64); ok && fontSize > 0 {
+		config.EditorFontSize = int(fontSize)
+	}
+	if fontFamily, ok := settings["editorFontFamily"].(string); ok && fontFamily != "" {
+		config.EditorFontFamily = fontFamily
+	}
+	
+	err := a.saveConfig(config)
+	if err != nil {
+		return FileSystemResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to save settings: %v", err),
+		}
+	}
+	
+	return FileSystemResponse{Success: true}
+}
+
 // SetStoragePath sets a new storage path
 func (a *App) SetStoragePath(newPath string) FileSystemResponse {
 	// Expand ~ to home directory
@@ -629,9 +678,10 @@ func (a *App) SetStoragePath(newPath string) FileSystemResponse {
 		return FileSystemResponse{Success: false, Error: fmt.Sprintf("Failed to create directory: %v", err)}
 	}
 
-	// Update config
+	// Update config (preserve existing settings)
+	config := a.loadConfig()
+	config.StoragePath = newPath
 	a.storagePath = newPath
-	config := AppConfig{StoragePath: newPath}
 	if err := a.saveConfig(config); err != nil {
 		return FileSystemResponse{Success: false, Error: fmt.Sprintf("Failed to save config: %v", err)}
 	}

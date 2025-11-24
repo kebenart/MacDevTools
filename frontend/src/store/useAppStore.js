@@ -76,6 +76,24 @@ export const useAppStore = create((set, get) => ({
       const storagePath = await App.GetStoragePath()
       set({ storagePath })
 
+      // Load user settings from config file
+      try {
+        const settings = await App.GetUserSettings()
+        if (settings) {
+          const updates = {}
+          if (settings.theme) updates.theme = settings.theme
+          if (settings.language) updates.language = settings.language
+          if (settings.autoSave !== undefined) updates.autoSave = settings.autoSave
+          if (settings.editorFontSize) updates.editorFontSize = settings.editorFontSize
+          if (settings.editorFontFamily) updates.editorFontFamily = settings.editorFontFamily
+          if (Object.keys(updates).length > 0) {
+            set(updates)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load user settings:', error)
+      }
+
       // Load all tool directories
       const tools = ['json', 'xml', 'base64', 'http']
       const newFileSystem = {}
@@ -855,13 +873,35 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Theme
-  toggleTheme: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
+  toggleTheme: () => {
+    const newTheme = get().theme === 'dark' ? 'light' : 'dark'
+    set({ theme: newTheme })
+    // Auto-save theme setting
+    App.SaveUserSettings({ theme: newTheme }).catch(err => console.error('Failed to save theme:', err))
+  },
 
   // Settings
-  toggleAutoSave: () => set((state) => ({ autoSave: !state.autoSave })),
-  setLanguage: (language) => set({ language }),
-  setEditorFontSize: (size) => set({ editorFontSize: size }),
-  setEditorFontFamily: (family) => set({ editorFontFamily: family }),
+  toggleAutoSave: () => {
+    const newAutoSave = !get().autoSave
+    set({ autoSave: newAutoSave })
+    // Auto-save autoSave setting
+    App.SaveUserSettings({ autoSave: newAutoSave }).catch(err => console.error('Failed to save autoSave:', err))
+  },
+  setLanguage: (language) => {
+    set({ language })
+    // Auto-save language setting
+    App.SaveUserSettings({ language }).catch(err => console.error('Failed to save language:', err))
+  },
+  setEditorFontSize: (size) => {
+    set({ editorFontSize: size })
+    // Auto-save font size setting
+    App.SaveUserSettings({ editorFontSize: size }).catch(err => console.error('Failed to save font size:', err))
+  },
+  setEditorFontFamily: (family) => {
+    set({ editorFontFamily: family })
+    // Auto-save font family setting
+    App.SaveUserSettings({ editorFontFamily: family }).catch(err => console.error('Failed to save font family:', err))
+  },
 
   // Shortcuts
   updateShortcut: (action, shortcut) =>
