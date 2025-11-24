@@ -39,15 +39,34 @@
 
   * {
     @apply box-border m-0 p-0;
-    user-select: none;
+    /* 移除全局 user-select: none，防止影响编辑器输入 */
   }
 
   body {
     @apply font-macos overflow-hidden;
+    /* 将 user-select 移至 body，保持应用的原生感 */
+    user-select: none;
+    -webkit-user-select: none;
+    
     color: var(--macos-text-main);
     background: var(--macos-bg);
     font-size: 13px;
     height: 100vh;
+  }
+
+  /* 显式允许输入框和编辑器内容可选择 */
+  input, 
+  textarea, 
+  [contenteditable] {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+  }
+
+  /* 针对 Monaco Editor 的强制修复 */
+  .monaco-editor textarea {
+    user-select: text !important;
+    -webkit-user-select: text !important;
   }
 
   /* Custom scrollbar for macOS */
