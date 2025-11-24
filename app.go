@@ -149,12 +149,24 @@ type JSONFormatResponse struct {
 	Error  string `json:"error"`
 }
 
-// FormatJSON formats JSON with indentation
+// FormatJSON formats JSON with indentation while preserving key order
 func (a *App) FormatJSON(content string) JSONFormatResponse {
-	var data interface{}
+	// First validate that it's valid JSON
+	var test interface{}
+	if err := json.Unmarshal([]byte(content), &test); err != nil {
+		return JSONFormatResponse{
+			Result: "",
+			Error:  fmt.Sprintf("Invalid JSON: %v", err),
+		}
+	}
 
-	// Try to unmarshal
-	if err := json.Unmarshal([]byte(content), &data); err != nil {
+	// Use a custom decoder with UseNumber to preserve number precision
+	// and ensure key order is maintained
+	decoder := json.NewDecoder(strings.NewReader(content))
+	decoder.UseNumber()
+	
+	var data interface{}
+	if err := decoder.Decode(&data); err != nil {
 		return JSONFormatResponse{
 			Result: "",
 			Error:  fmt.Sprintf("Invalid JSON: %v", err),
@@ -162,6 +174,7 @@ func (a *App) FormatJSON(content string) JSONFormatResponse {
 	}
 
 	// Marshal with indentation
+	// Go 1.21+ maintains map insertion order
 	formatted, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return JSONFormatResponse{

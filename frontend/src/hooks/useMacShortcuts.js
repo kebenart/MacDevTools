@@ -241,11 +241,20 @@ export const useMacShortcuts = () => {
           case 'save': if (activeFileId) saveFile(activeFileId); break
           case 'saveAll': saveAllFiles(); break
           case 'find': 
-             // 查找通常由编辑器内部处理，这里可以留空或调用 editor trigger
+             // 查找通常由编辑器内部处理,这里可以留空或调用 editor trigger
              if (editorRef) editorRef.trigger('keyboard', 'actions.find');
              break
-          // 文件操作：如果在编辑器中，忽略这里的处理，由 menu 或编辑器默认行为接管
-          // 如果不在编辑器且不在输入框，则执行文件操作
+          case 'format':
+             if (editorRef && editorRef.hasTextFocus()) {
+               // 触发工具栏的格式化按钮点击
+               const formatButton = document.querySelector('[data-format-action]')
+               if (formatButton) {
+                 formatButton.click()
+               }
+             }
+             break
+          // 文件操作:如果在编辑器中,忽略这里的处理,由 menu 或编辑器默认行为接管
+          // 如果不在编辑器且不在输入框,则执行文件操作
           case 'copy': 
              if (!editorRef?.hasTextFocus() && !isNativeInput() && selectedItem) copyItem(selectedItem);
              break
@@ -264,8 +273,8 @@ export const useMacShortcuts = () => {
           case 'delete':
              if (!editorRef?.hasTextFocus() && !isNativeInput() && selectedItem) {
                 if (confirm(selectedItem.type === 'folder' 
-                    ? `确定要删除文件夹 "${selectedItem.name}" 及其所有内容吗？` 
-                    : `确定要删除文件 "${selectedItem.name}" 吗？`)) {
+                    ? `确定要删除文件夹 "${selectedItem.name}" 及其所有内容吗?` 
+                    : `确定要删除文件 "${selectedItem.name}" 吗?`)) {
                     deleteItem(selectedItem)
                 }
              }
