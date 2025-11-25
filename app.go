@@ -1227,16 +1227,29 @@ func (a *App) ClipboardCopy(text string) ClipboardResponse {
 
 // ClipboardPaste reads text from system clipboard
 func (a *App) ClipboardPaste() ClipboardResponse {
-	// Use macOS pbpaste command
+	// Set environment variables to ensure UTF-8 encoding
+	env := os.Environ()
 	cmd := exec.Command("pbpaste")
+	cmd.Env = append(env, "LC_ALL=en_US.UTF-8", "LANG=en_US.UTF-8")
+	
 	output, err := cmd.Output()
 	if err != nil {
 		return ClipboardResponse{Success: false, Error: fmt.Sprintf("Failed to read clipboard: %v", err)}
 	}
 
+	// Convert bytes to UTF-8 string properly
+	text := string(output)
+	
+	// Clean up any invalid UTF-8 sequences by replacing with replacement character
+	cleanText := strings.ToValidUTF8(text, "")
+	
+	// Trim any leading/trailing whitespace and null bytes
+	finalText := strings.TrimSpace(cleanText)
+	finalText = strings.ReplaceAll(finalText, "\x00", "")
+	
 	return ClipboardResponse{
 		Success: true,
-		Data:    string(output),
+		Data:    finalText,
 	}
 }
 
