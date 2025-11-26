@@ -35,6 +35,7 @@ type AppConfig struct {
 	AutoSave         bool   `json:"autoSave,omitempty"`
 	EditorFontSize   int    `json:"editorFontSize,omitempty"`
 	EditorFontFamily string `json:"editorFontFamily,omitempty"`
+	KeepLongestJson  bool   `json:"keepLongestJson,omitempty"`
 }
 
 // NewApp creates a new App application struct
@@ -46,7 +47,7 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.initConfig()
-	
+
 	// Setup window close handler to minimize instead of close
 	// This is done via macOS menu bar behavior
 }
@@ -166,10 +167,10 @@ func (a *App) ShowUnsavedChangesDialog(fileName string) (string, error) {
 // It returns "yes" if user confirms, "no" or "cancel" otherwise.
 func (a *App) ShowDeleteConfirmDialog(message string) (string, error) {
 	return runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
-		Type:    runtime.WarningDialog,
-		Title:   "确认删除",
-		Message: message,
-		Buttons: []string{"删除", "取消"},
+		Type:          runtime.WarningDialog,
+		Title:         "确认删除",
+		Message:       message,
+		Buttons:       []string{"删除", "取消"},
 		DefaultButton: "取消",
 		CancelButton:  "取消",
 	})
@@ -179,10 +180,10 @@ func (a *App) ShowDeleteConfirmDialog(message string) (string, error) {
 // It returns "确定" if user confirms, "取消" otherwise.
 func (a *App) ShowConfirmDialog(title string, message string) (string, error) {
 	return runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
-		Type:    runtime.QuestionDialog,
-		Title:   title,
-		Message: message,
-		Buttons: []string{"确定", "取消"},
+		Type:          runtime.QuestionDialog,
+		Title:         title,
+		Message:       message,
+		Buttons:       []string{"确定", "取消"},
 		DefaultButton: "确定",
 		CancelButton:  "取消",
 	})
@@ -191,10 +192,10 @@ func (a *App) ShowConfirmDialog(title string, message string) (string, error) {
 // ShowMessageDialog displays a native message dialog.
 func (a *App) ShowMessageDialog(title string, message string) (string, error) {
 	return runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
-		Type:    runtime.InfoDialog,
-		Title:   title,
-		Message: message,
-		Buttons: []string{"确定"},
+		Type:          runtime.InfoDialog,
+		Title:         title,
+		Message:       message,
+		Buttons:       []string{"确定"},
 		DefaultButton: "确定",
 	})
 }
@@ -487,7 +488,7 @@ type HTTPResponse struct {
 func (a *App) SendHTTPRequest(request HTTPRequest) HTTPResponse {
 	// Record start time
 	startTime := time.Now()
-	
+
 	// Validate URL
 	if request.URL == "" {
 		return HTTPResponse{
@@ -519,7 +520,7 @@ func (a *App) SendHTTPRequest(request HTTPRequest) HTTPResponse {
 	// Send request
 	resp, err := client.Do(req)
 	duration := time.Since(startTime).Milliseconds()
-	
+
 	if err != nil {
 		// Provide more specific error messages
 		errMsg := err.Error()
@@ -630,13 +631,14 @@ func (a *App) GetUserSettings() map[string]interface{} {
 		"autoSave":         config.AutoSave,
 		"editorFontSize":   config.EditorFontSize,
 		"editorFontFamily": config.EditorFontFamily,
+		"keepLongestJson":  config.KeepLongestJson,
 	}
 }
 
 // SaveUserSettings saves user settings to config file
 func (a *App) SaveUserSettings(settings map[string]interface{}) FileSystemResponse {
 	config := a.loadConfig()
-	
+
 	// Update config with new settings
 	if theme, ok := settings["theme"].(string); ok && theme != "" {
 		config.Theme = theme
@@ -653,7 +655,10 @@ func (a *App) SaveUserSettings(settings map[string]interface{}) FileSystemRespon
 	if fontFamily, ok := settings["editorFontFamily"].(string); ok && fontFamily != "" {
 		config.EditorFontFamily = fontFamily
 	}
-	
+	if keepLongestJson, ok := settings["keepLongestJson"].(bool); ok {
+		config.KeepLongestJson = keepLongestJson
+	}
+
 	err := a.saveConfig(config)
 	if err != nil {
 		return FileSystemResponse{
@@ -661,7 +666,7 @@ func (a *App) SaveUserSettings(settings map[string]interface{}) FileSystemRespon
 			Error:   fmt.Sprintf("Failed to save settings: %v", err),
 		}
 	}
-	
+
 	return FileSystemResponse{Success: true}
 }
 
@@ -867,7 +872,7 @@ func (a *App) CreateFolder(tool string, parentPath string, folderName string) Fi
 // DeleteItem deletes a file or folder
 func (a *App) DeleteItem(itemPath string) FileSystemResponse {
 	log.Printf("DeleteItem called with path: %s", itemPath)
-	
+
 	// Security check: ensure path is within storage directory
 	absPath, err := filepath.Abs(itemPath)
 	if err != nil {
@@ -877,7 +882,7 @@ func (a *App) DeleteItem(itemPath string) FileSystemResponse {
 
 	absStorage, _ := filepath.Abs(a.storagePath)
 	log.Printf("DeleteItem: absPath=%s, absStorage=%s", absPath, absStorage)
-	
+
 	if !strings.HasPrefix(absPath, absStorage) {
 		log.Printf("DeleteItem: Access denied - path outside storage directory")
 		return FileSystemResponse{Success: false, Error: fmt.Sprintf("Access denied: path outside storage directory. Path: %s, Storage: %s", absPath, absStorage)}
@@ -1186,7 +1191,7 @@ func copyDir(src, dst string) error {
 }
 
 // ========== Clipboard Operations ==========
- 
+
 // ClipboardResponse represents clipboard operation response
 type ClipboardResponse struct {
 	Success bool   `json:"success"`
@@ -1231,7 +1236,7 @@ func (a *App) ClipboardPaste() ClipboardResponse {
 	env := os.Environ()
 	cmd := exec.Command("pbpaste")
 	cmd.Env = append(env, "LC_ALL=en_US.UTF-8", "LANG=en_US.UTF-8")
-	
+
 	output, err := cmd.Output()
 	if err != nil {
 		return ClipboardResponse{Success: false, Error: fmt.Sprintf("Failed to read clipboard: %v", err)}
@@ -1239,14 +1244,14 @@ func (a *App) ClipboardPaste() ClipboardResponse {
 
 	// Convert bytes to UTF-8 string properly
 	text := string(output)
-	
+
 	// Clean up any invalid UTF-8 sequences by replacing with replacement character
 	cleanText := strings.ToValidUTF8(text, "")
-	
+
 	// Trim any leading/trailing whitespace and null bytes
 	finalText := strings.TrimSpace(cleanText)
 	finalText = strings.ReplaceAll(finalText, "\x00", "")
-	
+
 	return ClipboardResponse{
 		Success: true,
 		Data:    finalText,
@@ -1286,7 +1291,7 @@ func (a *App) GlobalSearch(query string) []SearchResult {
 	dirs := []string{"json", "xml", "base64", "http"}
 	for _, tool := range dirs {
 		toolPath := filepath.Join(a.storagePath, tool)
-		
+
 		// Walk through directory
 		filepath.Walk(toolPath, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() {

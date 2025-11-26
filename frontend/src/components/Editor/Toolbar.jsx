@@ -1,6 +1,6 @@
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../constants/translations'
-import { Copy, Search, Eye } from 'lucide-react'
+import { Copy, Search, Eye, Filter } from 'lucide-react'
 import { FormatJSON, CompressJSON, FormatXML, XMLToJSON, EncodeBase64, DecodeBase64, SendHTTPRequest } from '../../wailsjs/go/main/App'
 import { copyToClipboard } from '../../utils/clipboard'
 
@@ -29,6 +29,7 @@ function Toolbar() {
     editorRef,
     setHTTPResponse,
     saveFile,
+    keepLongestJson,
   } = useAppStore()
   const { t } = useTranslation()
 
@@ -39,6 +40,16 @@ function Toolbar() {
 
     switch (currentTool) {
       case 'json':
+        // JSON格式化：保留所有内容，但对其中的JSON进行格式化
+        setLoading(true)
+        try {
+          const formatted = formatMixedContent(content)
+          updateFileContent(activeFileId, formatted)
+          showToast(t('messages.success.jsonFormatted'), 'success')
+        } finally {
+          setLoading(false)
+        }
+        break
       case 'xml':
         await formatActiveFile()
         break
@@ -53,6 +64,272 @@ function Toolbar() {
         await handleHTTPSend()
         break
     }
+  }
+
+  const handleJSONFilter = async () => {
+    if (!activeFileId || isLoading) return
+
+    setLoading(true)
+    try {
+      const filteredJSON = extractAndFilterJSON(content)
+      if (filteredJSON) {
+        updateFileContent(activeFileId, filteredJSON)
+        showToast(t('messages.success.jsonFiltered'), 'success')
+      } else {
+        showToast(t('messages.errors.noJsonFound'), 'error')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 过滤功能：只保留JSON，去掉其他文本
+  const extractAndFilterJSON = (text) => {
+    if (!text || typeof text !== 'string') return null
+
+    // First, try to parse the entire text as JSON
+    try {
+      const parsed = JSON.parse(text.trim())
+      return JSON.stringify(parsed, null, 2)
+    } catch {
+      // If not valid JSON, extract JSON objects/arrays from text
+    }
+
+    const jsonObjects = []
+    let currentJson = ''
+    let braceCount = 0
+    let bracketCount = 0
+    let inString = false
+    let escaped = false
+    let inJson = false
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i]
+
+      if (escaped) {
+        escaped = false
+        if (inJson) currentJson += char
+        continue
+      }
+
+      if (char === '\\' && inString) {
+        escaped = true
+        if (inJson) currentJson += char
+        continue
+      }
+
+      if (char === '"' && !escaped) {
+        inString = !inString
+        if (inJson) currentJson += char
+        continue
+      }
+
+      if (!inString) {
+        if (char === '{') {
+          if (!inJson) {
+            inJson = true
+            currentJson = char
+            braceCount = 1
+          } else {
+            braceCount++
+            currentJson += char
+          }
+        } else if (char === '[') {
+          if (!inJson) {
+            inJson = true
+            currentJson = char
+            bracketCount = 1
+          } else {
+            bracketCount++
+            currentJson += char
+          }
+        } else if (char === '}' && inJson) {
+          braceCount--
+          currentJson += char
+          if (braceCount === 0 && bracketCount === 0) {
+            // Complete JSON object found
+            try {
+              const parsed = JSON.parse(currentJson.trim())
+              jsonObjects.push(JSON.stringify(parsed, null, 2))
+            } catch {
+              // Invalid JSON, ignore
+            }
+            inJson = false
+            currentJson = ''
+          }
+        } else if (char === ']' && inJson) {
+          bracketCount--
+          currentJson += char
+          if (braceCount === 0 && bracketCount === 0) {
+            // Complete JSON array found
+            try {
+              const parsed = JSON.parse(currentJson.trim())
+              jsonObjects.push(JSON.stringify(parsed, null, 2))
+            } catch {
+              // Invalid JSON, ignore
+            }
+            inJson = false
+            currentJson = ''
+          }
+        } else if (inJson) {
+          currentJson += char
+        }
+      } else if (inJson) {
+        currentJson += char
+      }
+    }
+
+    if (jsonObjects.length === 0) {
+      // Try regex approach as fallback
+      const jsonRegex = /(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\])/g
+      const matches = text.match(jsonRegex) || []
+      
+      for (const match of matches) {
+        try {
+          const parsed = JSON.parse(match.trim())
+          jsonObjects.push(JSON.stringify(parsed, null, 2))
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+    }
+
+    if (jsonObjects.length === 0) return null
+    
+    // 如果开启了"只保留最长JSON"选项，返回最长的那个
+    if (keepLongestJson && jsonObjects.length > 1) {
+      const longestJson = jsonObjects.reduce((longest, current) => 
+        current.length > longest.length ? current : longest
+      )
+      return longestJson
+    }
+    
+    // 否则返回所有JSON，用换行分隔
+    return jsonObjects.join('\n\n')
+  }
+
+  // 格式化功能：保留所有内容，但对其中的JSON进行格式化
+  const formatMixedContent = (text) => {
+    if (!text || typeof text !== 'string') return text
+
+    // First, try to parse the entire text as JSON
+    try {
+      const parsed = JSON.parse(text.trim())
+      return JSON.stringify(parsed, null, 2)
+    } catch {
+      // If not valid JSON, format JSON parts within the text
+    }
+
+    let result = text
+    let currentJson = ''
+    let braceCount = 0
+    let bracketCount = 0
+    let inString = false
+    let escaped = false
+    let inJson = false
+    let jsonStart = -1
+    const jsonReplacements = []
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i]
+
+      if (escaped) {
+        escaped = false
+        if (inJson) currentJson += char
+        continue
+      }
+
+      if (char === '\\' && inString) {
+        escaped = true
+        if (inJson) currentJson += char
+        continue
+      }
+
+      if (char === '"' && !escaped) {
+        inString = !inString
+        if (inJson) currentJson += char
+        continue
+      }
+
+      if (!inString) {
+        if (char === '{') {
+          if (!inJson) {
+            inJson = true
+            jsonStart = i
+            currentJson = char
+            braceCount = 1
+          } else {
+            braceCount++
+            currentJson += char
+          }
+        } else if (char === '[') {
+          if (!inJson) {
+            inJson = true
+            jsonStart = i
+            currentJson = char
+            bracketCount = 1
+          } else {
+            bracketCount++
+            currentJson += char
+          }
+        } else if (char === '}' && inJson) {
+          braceCount--
+          currentJson += char
+          if (braceCount === 0 && bracketCount === 0) {
+            // Complete JSON object found
+            try {
+              const parsed = JSON.parse(currentJson.trim())
+              const formattedJson = JSON.stringify(parsed, null, 2)
+              jsonReplacements.push({
+                start: jsonStart,
+                end: i + 1,
+                original: currentJson,
+                formatted: formattedJson
+              })
+            } catch {
+              // Invalid JSON, ignore
+            }
+            inJson = false
+            currentJson = ''
+            jsonStart = -1
+          }
+        } else if (char === ']' && inJson) {
+          bracketCount--
+          currentJson += char
+          if (braceCount === 0 && bracketCount === 0) {
+            // Complete JSON array found
+            try {
+              const parsed = JSON.parse(currentJson.trim())
+              const formattedJson = JSON.stringify(parsed, null, 2)
+              jsonReplacements.push({
+                start: jsonStart,
+                end: i + 1,
+                original: currentJson,
+                formatted: formattedJson
+              })
+            } catch {
+              // Invalid JSON, ignore
+            }
+            inJson = false
+            currentJson = ''
+            jsonStart = -1
+          }
+        } else if (inJson) {
+          currentJson += char
+        }
+      } else if (inJson) {
+        currentJson += char
+      }
+    }
+
+    // Apply replacements from end to start to maintain correct indices
+    jsonReplacements.reverse().forEach(replacement => {
+      result = result.substring(0, replacement.start) + 
+               replacement.formatted + 
+               result.substring(replacement.end)
+    })
+
+    return result
   }
 
   const handleAction2 = async () => {
@@ -240,7 +517,7 @@ function Toolbar() {
   const getActionLabels = () => {
     switch (currentTool) {
       case 'json':
-        return { btn1: t('toolbar.format'), btn2: t('toolbar.compress') }
+        return { btn1: t('toolbar.format'), btn2: t('toolbar.compress'), btn3: t('toolbar.filter') }
       case 'xml':
         return { btn1: t('toolbar.format'), btn2: t('toolbar.toJson') }
       case 'base64':
@@ -262,6 +539,7 @@ function Toolbar() {
         disabled={!activeFileId || isLoading}
         className="px-3 py-1 bg-macos-accent text-white rounded text-xs
           hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+        data-testid="json-format-btn"
       >
         {isLoading ? '加载中...' : labels.btn1}
       </button>
@@ -274,6 +552,20 @@ function Toolbar() {
             hover:bg-macos-item-active disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {labels.btn2}
+        </button>
+      )}
+
+      {currentTool === 'json' && (
+        <button
+          onClick={handleJSONFilter}
+          disabled={!activeFileId || isLoading}
+          className="px-3 py-1 bg-macos-item-hover text-macos-text-main rounded text-xs
+            hover:bg-macos-item-active disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          title={t('toolbar.filterTooltip')}
+          data-testid="json-filter-btn"
+        >
+          <Filter size={12} />
+          {labels.btn3}
         </button>
       )}
 

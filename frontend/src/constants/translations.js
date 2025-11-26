@@ -55,6 +55,7 @@ export const translations = {
     toolbar: {
       format: '格式化',
       compress: '压缩',
+      filter: '过滤',
       toJson: '转JSON',
       encode: '编码',
       decode: '解码',
@@ -65,6 +66,7 @@ export const translations = {
       paste: '粘贴',
       preview: '预览',
       globalSearchTooltip: '全局搜索 (Cmd+Shift+F)',
+      filterTooltip: '提取JSON (Cmd+Shift+O)',
     },
 
     // 预览
@@ -113,6 +115,8 @@ export const translations = {
       lightMode: '浅色模式',
       autoSave: '自动保存',
       autoSaveDescription: '自动保存更改',
+      keepLongestJson: 'JSON过滤优化',
+      keepLongestJsonDescription: '多个JSON时只保留最长的',
       storagePath: '存储位置',
       changeStoragePath: '更改存储位置',
       storagePathDescription: '文件将存储在此目录下的 json、xml、base64、http 子文件夹中',
@@ -152,6 +156,7 @@ export const translations = {
       rename: { name: '重命名', description: '重命名选中的文件' },
       delete: { name: '删除', description: '删除选中的文件' },
       format: { name: '格式化', description: '格式化当前文件内容' },
+      filterJson: { name: 'JSON过滤', description: '从文本中提取JSON内容' },
     },
 
     // 消息提示
@@ -159,6 +164,7 @@ export const translations = {
       success: {
         jsonFormatted: 'JSON 格式化成功',
         jsonCompressed: 'JSON 压缩成功',
+        jsonFiltered: 'JSON 过滤提取成功',
         xmlFormatted: 'XML 格式化成功',
         xmlToJson: 'XML 转换为 JSON 成功',
         base64Encoded: 'Base64 编码成功',
@@ -184,6 +190,7 @@ export const translations = {
         invalidJson: '无效的 JSON 格式',
         invalidXml: '无效的 XML 格式',
         invalidBase64: '无效的 Base64 格式',
+        noJsonFound: '未找到有效的JSON内容',
         httpError: 'HTTP 请求失败',
         exportFailed: '导出失败',
         importFailed: '导入失败',
@@ -265,6 +272,7 @@ export const translations = {
     toolbar: {
       format: 'Format',
       compress: 'Compress',
+      filter: 'Filter',
       toJson: 'To JSON',
       encode: 'Encode',
       decode: 'Decode',
@@ -275,6 +283,7 @@ export const translations = {
       paste: 'Paste',
       preview: 'Preview',
       globalSearchTooltip: 'Global Search (Cmd+Shift+F)',
+      filterTooltip: 'Extract JSON (Cmd+Shift+O)',
     },
     preview: {
       title: 'Preview',
@@ -315,6 +324,8 @@ export const translations = {
       lightMode: 'Light Mode',
       autoSave: 'Auto Save',
       autoSaveDescription: 'Automatically save changes',
+      keepLongestJson: 'JSON Filter Optimization',
+      keepLongestJsonDescription: 'Keep only the longest JSON when multiple found',
       storagePath: 'Storage Location',
       changeStoragePath: 'Change Storage Location',
       storagePathDescription: 'Files are stored in json, xml, base64, http subfolders',
@@ -352,11 +363,13 @@ export const translations = {
       rename: { name: 'Rename', description: 'Rename selected file' },
       delete: { name: 'Delete', description: 'Delete selected file' },
       format: { name: 'Format', description: 'Format current file content' },
+      filterJson: { name: 'Filter JSON', description: 'Extract JSON content from text' },
     },
     messages: {
       success: {
         jsonFormatted: 'JSON formatted successfully',
         jsonCompressed: 'JSON compressed successfully',
+        jsonFiltered: 'JSON filtered and extracted successfully',
         xmlFormatted: 'XML formatted successfully',
         xmlToJson: 'XML converted to JSON successfully',
         base64Encoded: 'Base64 encoded successfully',
@@ -379,6 +392,7 @@ export const translations = {
         invalidJson: 'Invalid JSON format',
         invalidXml: 'Invalid XML format',
         invalidBase64: 'Invalid Base64 format',
+        noJsonFound: 'No valid JSON content found',
         httpError: 'HTTP request failed',
         exportFailed: 'Export failed',
         importFailed: 'Import failed',
@@ -437,6 +451,7 @@ export const defaultShortcuts = {
   delete: { key: 'Backspace', modifiers: ['meta'] },
   // 格式化快捷键
   format: { key: 'l', modifiers: ['meta', 'shift'] },
+  filterJson: { key: 'o', modifiers: ['meta', 'shift'] },
 };
 
 // 快捷键映射到功能的配置

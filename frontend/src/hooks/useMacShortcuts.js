@@ -242,7 +242,29 @@ export const useMacShortcuts = () => {
           case 'newFolder': createFolder('', 'NewFolder'); break
           case 'save': if (activeFileId) saveFile(activeFileId); break
           case 'saveAll': saveAllFiles(); break
-          case 'format': if (activeFileId) formatActiveFile(); break
+          case 'format': 
+             if (activeFileId) {
+               if (currentTool === 'json') {
+                 // JSON工具使用新的格式化功能
+                 const toolbar = document.querySelector('[data-testid="json-format-btn"]')
+                 if (toolbar) {
+                   toolbar.click()
+                 }
+               } else {
+                 // 其他工具使用原有格式化
+                 formatActiveFile()
+               }
+             }
+             break
+          case 'filterJson': 
+             if (currentTool === 'json') {
+               // 触发JSON过滤功能
+               const toolbar = document.querySelector('[data-testid="json-filter-btn"]')
+               if (toolbar) {
+                 toolbar.click()
+               }
+             }
+             break
           case 'find': 
              // 查找通常由编辑器内部处理，这里可以留空或调用 editor trigger
              if (editorRef) editorRef.trigger('keyboard', 'actions.find');
@@ -309,6 +331,14 @@ export const useMacShortcuts = () => {
 
           // For format (Cmd+Shift+L), always prevent default to override Monaco's default format
           if (action === 'format') {
+            e.preventDefault()
+            e.stopPropagation()
+            executeAction(action)
+            return
+          }
+
+          // For filterJson (Cmd+Shift+O), always prevent default to override Monaco's Go to Symbol
+          if (action === 'filterJson') {
             e.preventDefault()
             e.stopPropagation()
             executeAction(action)

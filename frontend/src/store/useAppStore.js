@@ -62,6 +62,7 @@ export const useAppStore = create((set, get) => ({
 
   // Settings
   autoSave: true,
+  keepLongestJson: false, // JSON过滤时是否只保留最长的JSON
   
   // Editor settings
   editorFontSize: 13,
@@ -86,6 +87,7 @@ export const useAppStore = create((set, get) => ({
           if (settings.autoSave !== undefined) updates.autoSave = settings.autoSave
           if (settings.editorFontSize) updates.editorFontSize = settings.editorFontSize
           if (settings.editorFontFamily) updates.editorFontFamily = settings.editorFontFamily
+          if (settings.keepLongestJson !== undefined) updates.keepLongestJson = settings.keepLongestJson
           if (Object.keys(updates).length > 0) {
             set(updates)
           }
@@ -902,6 +904,11 @@ export const useAppStore = create((set, get) => ({
     // Auto-save font family setting
     App.SaveUserSettings({ editorFontFamily: family }).catch(err => console.error('Failed to save font family:', err))
   },
+  setKeepLongestJson: (keep) => {
+    set({ keepLongestJson: keep })
+    // Auto-save keepLongestJson setting
+    App.SaveUserSettings({ keepLongestJson: keep }).catch(err => console.error('Failed to save keepLongestJson:', err))
+  },
 
   // Shortcuts
   updateShortcut: (action, shortcut) =>
@@ -974,10 +981,10 @@ export const useAppStore = create((set, get) => ({
 
   // Backup/Restore (exports current memory state for backup)
   exportBackup: () => {
-    const { theme, language, autoSave, editorFontSize, editorFontFamily, shortcuts } = get()
+    const { theme, language, autoSave, editorFontSize, editorFontFamily, keepLongestJson, shortcuts } = get()
     return JSON.stringify(
       {
-        settings: { theme, language, autoSave, editorFontSize, editorFontFamily },
+        settings: { theme, language, autoSave, editorFontSize, editorFontFamily, keepLongestJson },
         shortcuts,
       },
       null,
@@ -994,6 +1001,7 @@ export const useAppStore = create((set, get) => ({
         autoSave: true,
         editorFontSize: 13,
         editorFontFamily: 'Menlo, Monaco, Courier New, monospace',
+        keepLongestJson: false,
       }
       let newShortcuts = defaultShortcuts
 

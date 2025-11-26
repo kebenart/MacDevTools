@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../constants/translations'
-import MonacoEditor, { loader } from '@monaco-editor/react'
+import MonacoEditor from '@monaco-editor/react'
 import { registerHTTPLanguage } from '../../utils/httpLanguage'
 import { setupEditorClipboard } from '../../utils/editorClipboard'
 
@@ -27,9 +27,10 @@ function Editor() {
     theme,
     showToast,
     setEditorRef,
-    editorFontSize,
-    editorFontFamily,
-    } = useAppStore()
+    // 如果您已经在store中添加了viewStates支持，请解构它们，否则可忽略
+    // saveViewState,
+    // getViewState,
+  } = useAppStore()
   const { t } = useTranslation()
 
   const editorRef = useRef(null)
@@ -45,13 +46,12 @@ function Editor() {
   const content = activeFileId ? getFileContent(activeFileId) : ''
   const isDirty = activeFileId ? isFileDirty(activeFileId) : false
 
-  // Initialize Monaco and register HTTP language
-  useEffect(() => {
-    loader.init().then((monaco) => {
-      monacoRef.current = monaco
-      registerHTTPLanguage()
-    })
-  }, [])
+  // [修复] 在编辑器挂载前注册语言和主题
+  // 这确保了当编辑器初始化并请求 'http-dark' 主题时，该主题已经存在
+  const handleEditorWillMount = (monaco) => {
+    monacoRef.current = monaco
+    registerHTTPLanguage(monaco)
+  }
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor
@@ -60,7 +60,7 @@ function Editor() {
     // Store editor reference in store for toolbar access
     setEditorRef(editor)
     
-    // Setup system clipboard integration (minimal - won't interfere with normal editing)
+    // Setup system clipboard integration
     setupEditorClipboard(monaco, editor, showToast, t)
 
     // [修复] 覆盖 Monaco 默认的 Cmd+G (查找下一个)，改为切换预览区域
@@ -79,7 +79,32 @@ function Editor() {
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL,
       () => {
-        useAppStore.getState().formatActiveFile()
+        const { currentTool } = useAppStore.getState()
+        if (currentTool === 'json') {
+          // 触发JSON格式化功能（保留所有内容，格式化JSON部分）
+          const toolbar = document.querySelector('[data-testid="json-format-btn"]')
+          if (toolbar) {
+            toolbar.click()
+          }
+        } else {
+          // 其他工具使用原有的格式化功能
+          useAppStore.getState().formatActiveFile()
+        }
+      }
+    )
+    
+    // [修复] 覆盖 Monaco 默认的 Cmd+Shift+O (Go to Symbol in Editor)，使用自定义的JSON过滤
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyO,
+      () => {
+        const { currentTool } = useAppStore.getState()
+        if (currentTool === 'json') {
+          // 触发JSON过滤功能
+          const toolbar = document.querySelector('[data-testid="json-filter-btn"]')
+          if (toolbar) {
+            toolbar.click()
+          }
+        }
       }
     )
   }
@@ -93,16 +118,11 @@ function Editor() {
   // Get language based on current tool
   const getLanguage = () => {
     switch (currentTool) {
-      case 'json':
-        return 'json'
-      case 'xml':
-        return 'xml'
-      case 'base64':
-        return 'plaintext'
-      case 'http':
-        return 'http'
-      default:
-        return 'plaintext'
+      case 'json': return 'json'
+      case 'xml': return 'xml'
+      case 'base64': return 'plaintext'
+      case 'http': return 'http'
+      default: return 'plaintext'
     }
   }
 
@@ -130,16 +150,18 @@ function Editor() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--macos-bg)' }}>
       <MonacoEditor
-        key={activeFileId} // Force re-render when file changes
+        // [修复] 移除 key={activeFileId} 以保持编辑器实例存活，避免闪烁和状态丢失
+        path={activeFile?.path || activeFileId} 
         height="100%"
         language={getLanguage()}
         value={content}
         onChange={handleEditorChange}
+        beforeMount={handleEditorWillMount} // [修复] 关键点：挂载前注册主题
         onMount={handleEditorDidMount}
         theme={getEditorTheme()}
         options={{
-          fontFamily: editorFontFamily,
-          fontSize: editorFontSize,
+          fontFamily: 'Menlo, Monaco, Courier New, monospace',
+          fontSize: 13,
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
           wordWrap: 'on',
