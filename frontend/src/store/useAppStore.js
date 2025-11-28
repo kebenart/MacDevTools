@@ -607,6 +607,35 @@ export const useAppStore = create((set, get) => ({
     })
   },
 
+  // 展开/收起所有文件夹
+  toggleAllFolders: (expand = null) => {
+    const { fileSystem, currentTool } = get()
+
+    const toggleAllInArray = (items) => {
+      return items.map((item) => {
+        if (item.type === 'folder') {
+          const newExpanded = expand !== null ? expand : !item.expanded
+          return {
+            ...item,
+            expanded: newExpanded,
+            children: item.children ? toggleAllInArray(item.children) : item.children,
+          }
+        }
+        if (item.children) {
+          return { ...item, children: toggleAllInArray(item.children) }
+        }
+        return item
+      })
+    }
+
+    set({
+      fileSystem: {
+        ...fileSystem,
+        [currentTool]: toggleAllInArray(fileSystem[currentTool]),
+      },
+    })
+  },
+
   saveFile: async (fileId, force = false) => {
     const { fileContents, httpResponses, currentTool } = get()
     const fileData = fileContents[fileId]

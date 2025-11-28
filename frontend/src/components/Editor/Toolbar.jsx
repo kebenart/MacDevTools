@@ -83,23 +83,86 @@ function Toolbar() {
     }
   }
 
+  // 解析单引号JSON的辅助函数
+  const parseJSONWithSingleQuotes = (text) => {
+    if (!text || typeof text !== 'string') return null
+    
+    // 先尝试标准JSON解析
+    try {
+      return JSON.parse(text.trim())
+    } catch {
+      // 如果失败，尝试将单引号替换为双引号
+      try {
+        // 简单的单引号替换（不处理字符串内的单引号转义）
+        const doubleQuoted = text.trim().replace(/'/g, '"')
+        return JSON.parse(doubleQuoted)
+      } catch {
+        // 更复杂的处理：处理字符串内的单引号
+        let result = ''
+        let inString = false
+        let escaped = false
+        
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i]
+          
+          if (escaped) {
+            result += char
+            escaped = false
+            continue
+          }
+          
+          if (char === '\\') {
+            escaped = true
+            result += char
+            continue
+          }
+          
+          if (char === "'" && !escaped) {
+            if (!inString) {
+              inString = true
+              result += '"'
+            } else {
+              // 检查下一个字符，如果是非字母数字，可能是字符串结束
+              const nextChar = text[i + 1]
+              if (nextChar === undefined || /[\s,}\]:]/.test(nextChar)) {
+                inString = false
+                result += '"'
+              } else {
+                result += "\\'"
+              }
+            }
+          } else {
+            result += char
+          }
+        }
+        
+        try {
+          return JSON.parse(result.trim())
+        } catch {
+          return null
+        }
+      }
+    }
+  }
+
   // 过滤功能：只保留JSON，去掉其他文本
   const extractAndFilterJSON = (text) => {
     if (!text || typeof text !== 'string') return null
 
-    // First, try to parse the entire text as JSON
-    try {
-      const parsed = JSON.parse(text.trim())
+    // First, try to parse the entire text as JSON (支持单引号)
+    const parsed = parseJSONWithSingleQuotes(text)
+    if (parsed !== null) {
       return JSON.stringify(parsed, null, 2)
-    } catch {
-      // If not valid JSON, extract JSON objects/arrays from text
     }
+    
+    // If not valid JSON, extract JSON objects/arrays from text
 
     const jsonObjects = []
     let currentJson = ''
     let braceCount = 0
     let bracketCount = 0
     let inString = false
+    let stringChar = null // 记录字符串引号类型 (' 或 ")
     let escaped = false
     let inJson = false
 
@@ -118,8 +181,14 @@ function Toolbar() {
         continue
       }
 
-      if (char === '"' && !escaped) {
-        inString = !inString
+      if ((char === '"' || char === "'") && !escaped) {
+        if (!inString) {
+          inString = true
+          stringChar = char
+        } else if (char === stringChar) {
+          inString = false
+          stringChar = null
+        }
         if (inJson) currentJson += char
         continue
       }
@@ -148,11 +217,9 @@ function Toolbar() {
           currentJson += char
           if (braceCount === 0 && bracketCount === 0) {
             // Complete JSON object found
-            try {
-              const parsed = JSON.parse(currentJson.trim())
+            const parsed = parseJSONWithSingleQuotes(currentJson.trim())
+            if (parsed !== null) {
               jsonObjects.push(JSON.stringify(parsed, null, 2))
-            } catch {
-              // Invalid JSON, ignore
             }
             inJson = false
             currentJson = ''
@@ -162,11 +229,9 @@ function Toolbar() {
           currentJson += char
           if (braceCount === 0 && bracketCount === 0) {
             // Complete JSON array found
-            try {
-              const parsed = JSON.parse(currentJson.trim())
+            const parsed = parseJSONWithSingleQuotes(currentJson.trim())
+            if (parsed !== null) {
               jsonObjects.push(JSON.stringify(parsed, null, 2))
-            } catch {
-              // Invalid JSON, ignore
             }
             inJson = false
             currentJson = ''
@@ -185,11 +250,9 @@ function Toolbar() {
       const matches = text.match(jsonRegex) || []
       
       for (const match of matches) {
-        try {
-          const parsed = JSON.parse(match.trim())
+        const parsed = parseJSONWithSingleQuotes(match.trim())
+        if (parsed !== null) {
           jsonObjects.push(JSON.stringify(parsed, null, 2))
-        } catch {
-          // Invalid JSON, ignore
         }
       }
     }
@@ -212,19 +275,20 @@ function Toolbar() {
   const formatMixedContent = (text) => {
     if (!text || typeof text !== 'string') return text
 
-    // First, try to parse the entire text as JSON
-    try {
-      const parsed = JSON.parse(text.trim())
+    // First, try to parse the entire text as JSON (支持单引号)
+    const parsed = parseJSONWithSingleQuotes(text.trim())
+    if (parsed !== null) {
       return JSON.stringify(parsed, null, 2)
-    } catch {
-      // If not valid JSON, format JSON parts within the text
     }
+    
+    // If not valid JSON, format JSON parts within the text
 
     let result = text
     let currentJson = ''
     let braceCount = 0
     let bracketCount = 0
     let inString = false
+    let stringChar = null // 记录字符串引号类型 (' 或 ")
     let escaped = false
     let inJson = false
     let jsonStart = -1
@@ -245,8 +309,14 @@ function Toolbar() {
         continue
       }
 
-      if (char === '"' && !escaped) {
-        inString = !inString
+      if ((char === '"' || char === "'") && !escaped) {
+        if (!inString) {
+          inString = true
+          stringChar = char
+        } else if (char === stringChar) {
+          inString = false
+          stringChar = null
+        }
         if (inJson) currentJson += char
         continue
       }
@@ -277,8 +347,8 @@ function Toolbar() {
           currentJson += char
           if (braceCount === 0 && bracketCount === 0) {
             // Complete JSON object found
-            try {
-              const parsed = JSON.parse(currentJson.trim())
+            const parsed = parseJSONWithSingleQuotes(currentJson.trim())
+            if (parsed !== null) {
               const formattedJson = JSON.stringify(parsed, null, 2)
               jsonReplacements.push({
                 start: jsonStart,
@@ -286,8 +356,6 @@ function Toolbar() {
                 original: currentJson,
                 formatted: formattedJson
               })
-            } catch {
-              // Invalid JSON, ignore
             }
             inJson = false
             currentJson = ''
@@ -298,8 +366,8 @@ function Toolbar() {
           currentJson += char
           if (braceCount === 0 && bracketCount === 0) {
             // Complete JSON array found
-            try {
-              const parsed = JSON.parse(currentJson.trim())
+            const parsed = parseJSONWithSingleQuotes(currentJson.trim())
+            if (parsed !== null) {
               const formattedJson = JSON.stringify(parsed, null, 2)
               jsonReplacements.push({
                 start: jsonStart,
@@ -307,8 +375,6 @@ function Toolbar() {
                 original: currentJson,
                 formatted: formattedJson
               })
-            } catch {
-              // Invalid JSON, ignore
             }
             inJson = false
             currentJson = ''

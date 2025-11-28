@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../constants/translations'
 import MonacoEditor, { loader } from '@monaco-editor/react'
 import { registerHTTPLanguage } from '../../utils/httpLanguage'
+import { registerJSONLanguage } from '../../utils/jsonLanguage'
 import { copyToClipboard } from '../../utils/clipboard'
 
 /**
@@ -35,12 +36,14 @@ function Preview() {
 
   const editorRef = useRef(null)
   const monacoRef = useRef(null)
+  const [httpPreviewTab, setHttpPreviewTab] = useState('response') // 'response', 'responseHeaders', 'request', 'requestHeaders'
 
   // Initialize Monaco and register HTTP language
   useEffect(() => {
     loader.init().then((monaco) => {
       monacoRef.current = monaco
       registerHTTPLanguage(monaco)
+      registerJSONLanguage(monaco)
       // Apply theme immediately after Monaco is ready
       if (currentTool === 'http') {
         const themeName = theme === 'dark' ? 'http-dark' : 'http-light'
@@ -113,44 +116,144 @@ function Preview() {
         }
 
       case 'http':
-        // Show HTTP response instead of request
         const response = getHTTPResponse(activeFileId)
-        if (!response) {
-          return '' // No response yet
-        }
+        const requestContent = content || ''
         
-        // Format response for display
-        let formattedResponse = ''
-        
-        // Status line with duration
-        if (response.error) {
-          formattedResponse += `Error: ${response.error}\n`
-          if (response.duration) {
-            formattedResponse += `Duration: ${response.duration}ms\n`
+        // 解析单引号JSON的辅助函数
+        const parseJSONWithSingleQuotes = (text) => {
+          if (!text || typeof text !== 'string') return null
+          
+          // 先尝试标准JSON解析
+          try {
+            return JSON.parse(text.trim())
+          } catch {
+            // 如果失败，尝试将单引号替换为双引号
+            try {
+              // 简单的单引号替换（不处理字符串内的单引号转义）
+              const doubleQuoted = text.trim().replace(/'/g, '"')
+              return JSON.parse(doubleQuoted)
+            } catch {
+              // 更复杂的处理：处理字符串内的单引号
+              let result = ''
+              let inString = false
+              let escaped = false
+              
+              for (let i = 0; i < text.length; i++) {
+                const char = text[i]
+                
+                if (escaped) {
+                  result += char
+                  escaped = false
+                  continue
+                }
+                
+                if (char === '\\') {
+                  escaped = true
+                  result += char
+                  continue
+                }
+                
+                if (char === "'" && !escaped) {
+                  if (!inString) {
+                    inString = true
+                    result += '"'
+                  } else {
+                    // 检查下一个字符，如果是非字母数字，可能是字符串结束
+                    const nextChar = text[i + 1]
+                    if (nextChar === undefined || /[\s,}\]:]/.test(nextChar)) {
+                      inString = false
+                      result += '"'
+                    } else {
+                      result += "\\'"
+                    }
+                  }
+                } else {
+                  result += char
+                }
+              }
+              
+              try {
+                return JSON.parse(result.trim())
+              } catch {
+                return null
+              }
+            }
           }
-          formattedResponse += '\n'
-        } else {
-          formattedResponse += `HTTP/1.1 ${response.statusCode} ${response.status}\n`
-          if (response.duration) {
-            formattedResponse += `Duration: ${response.duration}ms\n`
+        }
+        
+        // 格式化JSON（支持单引号）
+        const formatJSON = (text) => {
+          if (!text) return ''
+          const parsed = parseJSONWithSingleQuotes(text)
+          if (parsed !== null) {
+            return JSON.stringify(parsed, null, 2)
           }
+          return text
         }
         
-        // Headers
-        if (response.headers && Object.keys(response.headers).length > 0) {
-          formattedResponse += '\n'
-          for (const [key, value] of Object.entries(response.headers)) {
-            formattedResponse += `${key}: ${value}\n`
+        // 根据选中的tab返回不同内容
+        if (httpPreviewTab === 'response') {
+          // 响应body（格式化JSON）
+          if (!response) {
+            return '' // No response yet
           }
+          
+          if (response.body) {
+            return formatJSON(response.body)
+          }
+          
+          return ''
+        } else if (httpPreviewTab === 'responseHeaders') {
+          // 响应头
+          if (!response) {
+            return '' // No response yet
+          }
+          
+          let headersText = ''
+          if (response.headers && Object.keys(response.headers).length > 0) {
+            for (const [key, value] of Object.entries(response.headers)) {
+              headersText += `${key}: ${value}\n`
+            }
+          } else {
+            headersText = 'No headers'
+          }
+          
+          return headersText
+        } else if (httpPreviewTab === 'request') {
+          // 请求内容
+          return requestContent
+        } else if (httpPreviewTab === 'requestHeaders') {
+          // 请求头 - 从请求内容中解析
+          if (!requestContent) {
+            return '' // No request content
+          }
+          
+          const lines = requestContent.split('\n')
+          let headersText = ''
+          let foundHeaders = false
+          
+          // 跳过第一行（METHOD URL）
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim()
+            if (line === '') {
+              // 空行表示headers结束
+              break
+            }
+            const colonIndex = line.indexOf(':')
+            if (colonIndex !== -1) {
+              foundHeaders = true
+              headersText += `${line}\n`
+            }
+          }
+          
+          if (!foundHeaders) {
+            headersText = 'No headers'
+          }
+          
+          return headersText
         }
         
-        // Body
-        if (response.body) {
-          formattedResponse += '\n'
-          formattedResponse += response.body
-        }
-        
-        return formattedResponse
+        return ''
 
       default:
         return ''
@@ -163,17 +266,48 @@ function Preview() {
   const getLanguage = () => {
     switch (currentTool) {
       case 'json':
-        return 'json'
+        return 'json-custom' // Use custom JSON language with single quote support
       case 'xml':
         return 'xml'
       case 'base64':
         return 'plaintext'
       case 'http':
-        return 'http'
+        // HTTP工具的请求tab也使用http语言
+        if (httpPreviewTab === 'request') {
+          return 'http'
+        }
+        // 响应tab使用json-custom（如果响应是JSON，支持单引号）
+        if (httpPreviewTab === 'response') {
+          const response = getHTTPResponse(activeFileId)
+          if (response && response.body) {
+            // 尝试解析JSON（支持单引号）
+            try {
+              JSON.parse(response.body)
+              return 'json-custom'
+            } catch {
+              // 尝试单引号JSON
+              try {
+                const doubleQuoted = response.body.trim().replace(/'/g, '"')
+                JSON.parse(doubleQuoted)
+                return 'json-custom'
+              } catch {
+                return 'plaintext'
+              }
+            }
+          }
+        }
+        return 'plaintext'
       default:
         return 'plaintext'
     }
   }
+  
+  // 重置HTTP tab当切换文件或工具时
+  useEffect(() => {
+    if (currentTool !== 'http') {
+      setHttpPreviewTab('response')
+    }
+  }, [currentTool, activeFileId])
 
   // Setup context menu with copy option
   const handleEditorDidMount = (editor, monaco) => {
@@ -182,6 +316,7 @@ function Preview() {
     
     // Ensure HTTP themes are registered
     registerHTTPLanguage(monaco)
+    registerJSONLanguage(monaco)
     
     // Apply theme immediately - force apply for HTTP tool
     const themeToApply = currentTool === 'http' 
@@ -325,15 +460,83 @@ function Preview() {
     )
   }
 
+  // HTTP工具显示tab切换
+  const renderHttpTabs = () => {
+    if (currentTool !== 'http') return null
+    
+    const response = getHTTPResponse(activeFileId)
+    if (!response) return null
+    
+    return (
+      <div className="flex items-center border-b border-macos-border" style={{ backgroundColor: 'var(--macos-explorer)' }}>
+        <button
+          onClick={() => setHttpPreviewTab('response')}
+          className={`px-4 py-2 text-xs font-medium transition-colors ${
+            httpPreviewTab === 'response'
+              ? 'border-b-2 border-macos-accent text-macos-accent'
+              : 'text-macos-text-sub hover:text-macos-text-main'
+          }`}
+          style={{
+            color: httpPreviewTab === 'response' ? 'var(--macos-accent)' : 'var(--macos-text-sub)',
+          }}
+        >
+          响应
+        </button>
+        <button
+          onClick={() => setHttpPreviewTab('responseHeaders')}
+          className={`px-4 py-2 text-xs font-medium transition-colors ${
+            httpPreviewTab === 'responseHeaders'
+              ? 'border-b-2 border-macos-accent text-macos-accent'
+              : 'text-macos-text-sub hover:text-macos-text-main'
+          }`}
+          style={{
+            color: httpPreviewTab === 'responseHeaders' ? 'var(--macos-accent)' : 'var(--macos-text-sub)',
+          }}
+        >
+          响应头
+        </button>
+        <button
+          onClick={() => setHttpPreviewTab('request')}
+          className={`px-4 py-2 text-xs font-medium transition-colors ${
+            httpPreviewTab === 'request'
+              ? 'border-b-2 border-macos-accent text-macos-accent'
+              : 'text-macos-text-sub hover:text-macos-text-main'
+          }`}
+          style={{
+            color: httpPreviewTab === 'request' ? 'var(--macos-accent)' : 'var(--macos-text-sub)',
+          }}
+        >
+          请求
+        </button>
+        <button
+          onClick={() => setHttpPreviewTab('requestHeaders')}
+          className={`px-4 py-2 text-xs font-medium transition-colors ${
+            httpPreviewTab === 'requestHeaders'
+              ? 'border-b-2 border-macos-accent text-macos-accent'
+              : 'text-macos-text-sub hover:text-macos-text-main'
+          }`}
+          style={{
+            color: httpPreviewTab === 'requestHeaders' ? 'var(--macos-accent)' : 'var(--macos-text-sub)',
+          }}
+        >
+          请求头
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div 
       className="flex-shrink-0 bg-macos-explorer border-l border-macos-border flex flex-col"
       style={{ width: `${previewWidth}px` }}
     >
+      {/* HTTP工具显示tab */}
+      {renderHttpTabs()}
+      
       {/* Monaco Editor for Preview - No header, no close button */}
       <div className="flex-1 overflow-hidden">
         <MonacoEditor
-          key={`preview-${activeFileId}-${currentTool}-${theme}`}
+          key={`preview-${activeFileId}-${currentTool}-${theme}-${httpPreviewTab}`}
           height="100%"
           language={getLanguage()}
           value={previewContent || ''}

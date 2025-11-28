@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../constants/translations'
 import MonacoEditor from '@monaco-editor/react'
 import { registerHTTPLanguage } from '../../utils/httpLanguage'
+import { registerJSONLanguage } from '../../utils/jsonLanguage'
 import { setupEditorClipboard } from '../../utils/editorClipboard'
 
 /**
@@ -51,6 +52,7 @@ function Editor() {
   const handleEditorWillMount = (monaco) => {
     monacoRef.current = monaco
     registerHTTPLanguage(monaco)
+    registerJSONLanguage(monaco)
   }
 
   const handleEditorDidMount = (editor, monaco) => {
@@ -118,7 +120,7 @@ function Editor() {
   // Get language based on current tool
   const getLanguage = () => {
     switch (currentTool) {
-      case 'json': return 'json'
+      case 'json': return 'json-custom' // Use custom JSON language with single quote support
       case 'xml': return 'xml'
       case 'base64': return 'plaintext'
       case 'http': return 'http'

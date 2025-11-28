@@ -46,8 +46,9 @@ export function registerHTTPLanguage(monaco) {
           // Numbers
           [/\d+/, 'number'],
 
-          // Comments
-          [/#.*$/, 'comment'],
+          // Comments - support #, ##, and /* */
+          [/#{1,2}.*$/, 'comment'],
+          [/\/\*/, { token: 'comment', next: '@comment' }],
         ],
 
         json: [
@@ -62,6 +63,11 @@ export function registerHTTPLanguage(monaco) {
         string: [
           [/[^\\"]+/, 'string'],
           [/"/, { token: 'string.quote', next: '@pop' }],
+        ],
+
+        comment: [
+          [/\*\//, { token: 'comment', next: '@pop' }],
+          [/./, 'comment'],
         ],
       },
     })
@@ -168,7 +174,7 @@ export function registerHTTPLanguage(monaco) {
       { token: 'variable.header', foreground: '9CDCFE' },
       { token: 'string.url', foreground: 'CE9178' },
       { token: 'string.path', foreground: 'CE9178' },
-      { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
+      { token: 'comment', foreground: '6A9955', fontStyle: 'italic' }, // Green color for comments
     ],
     colors: {},
   })
@@ -182,7 +188,7 @@ export function registerHTTPLanguage(monaco) {
       { token: 'variable.header', foreground: '0451A5' },
       { token: 'string.url', foreground: 'A31515' },
       { token: 'string.path', foreground: 'A31515' },
-      { token: 'comment', foreground: '008000', fontStyle: 'italic' },
+      { token: 'comment', foreground: '008000', fontStyle: 'italic' }, // Green color for comments
     ],
     colors: {},
   })

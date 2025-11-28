@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useTranslation } from '../../constants/translations'
-import { ChevronRight, Folder, File } from 'lucide-react'
+import { ChevronRight, Folder, File, ChevronsDownUp } from 'lucide-react'
 import ContextMenu from './ContextMenu'
 import { ShowDeleteConfirmDialog } from '../../wailsjs/go/main/App'
 
@@ -31,6 +31,7 @@ function FileExplorer() {
     isExplorerVisible,
     openFile,
     toggleFolder,
+    toggleAllFolders,
     createFile,
     createFolder,
     deleteItem,
@@ -56,6 +57,9 @@ function FileExplorer() {
   const [renameValue, setRenameValue] = useState('')
   const [selectedItems, setSelectedItems] = useState([])
   const [lastClickTime, setLastClickTime] = useState(0)
+  const [allFoldersExpanded, setAllFoldersExpanded] = useState(false)
+  const [justRenamed, setJustRenamed] = useState(false)
+  const fileListRef = useRef(null)
 
   const currentFiles = fileSystem[currentTool] || []
   const toolsConfig = getToolsConfig(t)
@@ -110,42 +114,136 @@ function FileExplorer() {
     hideContextMenu()
   }
 
-  // Handle file selection
+  // Handle file selection - 第一次单击仅聚焦，第二次单击才操作
   const handleItemClick = (e, item) => {
     e.stopPropagation()
     
-    const currentTime = Date.now()
-    const timeDiff = currentTime - lastClickTime
-    
-    if (timeDiff < 300) { // Double click detected
-      // Open file on double click
-      if (item.type === 'file') {
-        openFile(item.id, currentTool)
-      } else {
+    // 如果点击的是文件夹左侧的图标，只切换文件夹状态
+    if (e.target.closest('.folder-chevron')) {
+      if (item.type === 'folder') {
         toggleFolder(item.id)
       }
-    } else { // Single click
-      // Select item on single click
-      if (e.metaKey || e.shiftKey) {
-        // Multi-select support
-        setSelectedItems(prev => {
-          if (e.shiftKey && prev.length > 0) {
-            // Range selection (simplified - just add current item)
-            return [...prev, item]
-          } else {
-            // Toggle selection with Cmd key
-            const isSelected = prev.some(selected => selected.id === item.id)
-            return isSelected ? prev.filter(selected => selected.id !== item.id) : [...prev, item]
-          }
-        })
-      } else {
-        // Single selection
-        setSelectedItems([item])
-      }
-      setSelectedItem(item)
+      return
     }
     
+    // 如果正在重命名，不处理点击
+    if (renamingItem === item.id) {
+      return
+    }
+    
+    const currentTime = Date.now()
+    const timeDiff = currentTime - lastClickTime
+    const isSameItem = selectedItem?.id === item.id
+    const isAlreadySelected = isSameItem
+    
+    // 如果已经选中了这个项目，再次单击应该直接执行操作
+    if (isAlreadySelected && timeDiff > 300) {
+      // 已经选中，且不是快速双击，直接执行操作
+      if (item.type === 'file') {
+        // 文件：打开文件并聚焦编辑器
+        openFile(item.id, currentTool).then(() => {
+          // 聚焦编辑器
+          setTimeout(() => {
+            const { editorRef } = useAppStore.getState()
+            if (editorRef) {
+              editorRef.focus()
+            }
+          }, 100)
+        }).catch(() => {
+          // 忽略错误
+        })
+      } else {
+        // 文件夹：展开/收起
+        toggleFolder(item.id)
+      }
+      setLastClickTime(currentTime)
+      return
+    }
+    
+    // 更新选中状态（总是执行）
+    if (e.metaKey || e.shiftKey) {
+      // Multi-select support
+      setSelectedItems(prev => {
+        if (e.shiftKey && prev.length > 0) {
+          // Range selection (simplified - just add current item)
+          return [...prev, item]
+        } else {
+          // Toggle selection with Cmd key
+          const isSelected = prev.some(selected => selected.id === item.id)
+          return isSelected ? prev.filter(selected => selected.id !== item.id) : [...prev, item]
+        }
+      })
+    } else {
+      // Single selection
+      setSelectedItems([item])
+    }
+    setSelectedItem(item)
+    
+    // 判断是否为双击（300ms内且是同一个项目）
+    if (timeDiff < 300 && isSameItem) {
+      // 双击：执行操作
+      if (item.type === 'file') {
+        // 文件：打开文件并聚焦编辑器
+        openFile(item.id, currentTool).then(() => {
+          // 聚焦编辑器
+          setTimeout(() => {
+            const { editorRef } = useAppStore.getState()
+            if (editorRef) {
+              editorRef.focus()
+            }
+          }, 100)
+        }).catch(() => {
+          // 忽略错误
+        })
+      } else {
+        // 文件夹：展开/收起
+        toggleFolder(item.id)
+      }
+    }
+    // 第一次单击：只选中，不执行操作
+    
     setLastClickTime(currentTime)
+  }
+  
+  // Handle Enter key
+  const handleKeyDown = (e) => {
+    // 如果正在重命名，不处理回车键（让输入框自己处理）
+    if (renamingItem) {
+      return
+    }
+
+    // 如果刚完成重命名，不处理回车键（防止触发文件夹折叠）
+    if (justRenamed) {
+      return
+    }
+
+    // 如果焦点在输入框内，不处理
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      return
+    }
+
+    if (e.key === 'Enter' && selectedItem) {
+      e.preventDefault()
+      e.stopPropagation()
+
+      if (selectedItem.type === 'folder') {
+        // 文件夹：折叠/展开
+        toggleFolder(selectedItem.id)
+      } else {
+        // 文件：打开文件并聚焦编辑器
+        openFile(selectedItem.id, currentTool).then(() => {
+          // 聚焦编辑器
+          setTimeout(() => {
+            const { editorRef } = useAppStore.getState()
+            if (editorRef) {
+              editorRef.focus()
+            }
+          }, 100)
+        }).catch(() => {
+          // 忽略错误
+        })
+      }
+    }
   }
 
   // Clear selection when clicking on empty area
@@ -166,6 +264,12 @@ function FileExplorer() {
     }
     setRenamingItem(null)
     setRenameValue('')
+
+    // 设置标志表示刚完成重命名，防止Enter事件触发文件夹折叠
+    setJustRenamed(true)
+    setTimeout(() => {
+      setJustRenamed(false)
+    }, 100)
   }
 
   // Cancel rename
@@ -378,6 +482,29 @@ function FileExplorer() {
     setContextMenu({ x: e.clientX, y: e.clientY, items })
   }
 
+  // 切换所有文件夹展开/收起状态
+  const handleToggleAllFolders = () => {
+    const newState = !allFoldersExpanded
+    setAllFoldersExpanded(newState)
+    toggleAllFolders(newState)
+  }
+  
+  // 检查所有文件夹是否都展开
+  useEffect(() => {
+    const checkAllExpanded = (items) => {
+      for (const item of items) {
+        if (item.type === 'folder') {
+          if (!item.expanded) return false
+          if (item.children && !checkAllExpanded(item.children)) return false
+        }
+      }
+      return true
+    }
+    
+    const allExpanded = currentFiles.length > 0 && checkAllExpanded(currentFiles)
+    setAllFoldersExpanded(allExpanded)
+  }, [fileSystem, currentTool, currentFiles])
+
   // Render file tree recursively
   const renderItems = (items, level = 0) => {
     return items.map((item) => {
@@ -410,7 +537,11 @@ function FileExplorer() {
               <ChevronRight
                 size={12}
                 style={{ color: 'var(--macos-text-sub)' }}
-                className={`transition-transform flex-shrink-0 ${item.expanded ? 'rotate-90' : ''}`}
+                className={`transition-transform flex-shrink-0 folder-chevron cursor-pointer ${item.expanded ? 'rotate-90' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleFolder(item.id)
+                }}
               />
               <Folder size={14} style={{ color: 'var(--macos-text-sub)' }} className="flex-shrink-0" />
               {isRenaming ? (
@@ -420,8 +551,16 @@ function FileExplorer() {
                   onChange={(e) => setRenameValue(e.target.value)}
                   onBlur={() => confirmRename(item)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') confirmRename(item)
-                    if (e.key === 'Escape') cancelRename()
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      confirmRename(item)
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      cancelRename()
+                    }
                   }}
                   className="flex-1 text-sm bg-macos-input border border-macos-accent rounded px-1 outline-none"
                   style={{ color: 'var(--macos-text-main)' }}
@@ -477,8 +616,16 @@ function FileExplorer() {
                   onChange={(e) => setRenameValue(e.target.value)}
                   onBlur={() => confirmRename(item)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') confirmRename(item)
-                    if (e.key === 'Escape') cancelRename()
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      confirmRename(item)
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      cancelRename()
+                    }
                   }}
                   className="flex-1 min-w-0 text-sm bg-macos-input border border-macos-accent rounded px-1 outline-none"
                   style={{ color: 'var(--macos-text-main)' }}
@@ -512,17 +659,32 @@ function FileExplorer() {
         onClick={hideContextMenu}
       >
         {/* Header */}
-        <div className="h-9 flex items-center px-5 mt-10">
+        <div className="h-9 flex items-center justify-between px-5 mt-10">
           <span
             className="text-xs font-bold uppercase tracking-wider"
             style={{ color: 'var(--macos-text-sub)' }}
           >
             {toolsConfig[currentTool].title}
           </span>
+          <button
+            onClick={handleToggleAllFolders}
+            className="p-1 rounded hover:bg-macos-item-hover transition-colors"
+            style={{ color: 'var(--macos-text-sub)' }}
+            title={allFoldersExpanded ? '收起所有文件夹' : '展开所有文件夹'}
+          >
+            <ChevronsDownUp size={14} />
+          </button>
         </div>
 
         {/* File List */}
-        <div className="flex-1 overflow-y-auto pt-1" onContextMenu={handleBackgroundContext} onClick={handleBackgroundClick}>
+        <div
+          ref={fileListRef}
+          className="flex-1 overflow-y-auto pt-1"
+          onContextMenu={handleBackgroundContext}
+          onClick={handleBackgroundClick}
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+        >
           {currentFiles.length === 0 ? (
             <div className="px-5 py-4 text-sm text-center" style={{ color: 'var(--macos-text-sub)' }}>
               {t('explorer.empty') || '右键创建文件'}
