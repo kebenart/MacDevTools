@@ -443,43 +443,75 @@ function Toolbar() {
   const handleHTTPSend = async () => {
     if (!activeFileId) return
 
-    // Improved HTTP parser
-    const lines = content.split('\n')
-    const firstLine = lines[0].trim()
+    // [修复] 改进的 HTTP 解析器：智能忽略注释行
+    const rawLines = content.split('\n')
+    
+    let requestLine = ''
+    let headerLines = []
+    let bodyStart = -1
 
-    // Parse first line: METHOD URL or METHOD path
-    const firstSpaceIndex = firstLine.indexOf(' ')
+    let i = 0
+    // 1. 寻找请求行 (Method URL)，跳过开头的空行和注释
+    for (; i < rawLines.length; i++) {
+      const line = rawLines[i].trim()
+      if (line === '') continue 
+      if (line.startsWith('#') || line.startsWith('//')) continue // 跳过注释
+      requestLine = line
+      i++ // 移动到下一行准备解析 Header
+      break
+    }
+
+    if (!requestLine) {
+      showToast(t('messages.errors.invalidHttpFormat'), 'error')
+      return
+    }
+
+    // 2. 解析请求头，遇到空行则停止（空行后为 Body）
+    for (; i < rawLines.length; i++) {
+      const line = rawLines[i].trim()
+      if (line === '') {
+        bodyStart = i + 1
+        break
+      }
+      if (line.startsWith('#') || line.startsWith('//')) continue // 跳过 Header 区域的注释
+      headerLines.push(rawLines[i]) // 保留原始行（含大小写）
+    }
+
+    // 3. 提取 Body (保留 Body 内的所有内容，包括可能被误认为注释的字符)
+    const body = (bodyStart !== -1 && bodyStart < rawLines.length)
+      ? rawLines.slice(bodyStart).join('\n')
+      : ''
+
+    // --- 解析请求行 ---
+    const firstSpaceIndex = requestLine.indexOf(' ')
     if (firstSpaceIndex === -1) {
       showToast(t('messages.errors.invalidHttpFormat'), 'error')
       return
     }
 
-    const method = firstLine.substring(0, firstSpaceIndex).toUpperCase()
-    let urlOrPath = firstLine.substring(firstSpaceIndex + 1).trim()
+    const method = requestLine.substring(0, firstSpaceIndex).toUpperCase()
+    let urlOrPath = requestLine.substring(firstSpaceIndex + 1).trim()
 
-    // Remove HTTP version if present (e.g., "HTTP/1.1")
+    // 移除 HTTP 版本号 (如 "HTTP/1.1")
     const httpVersionIndex = urlOrPath.lastIndexOf(' HTTP/')
     if (httpVersionIndex !== -1) {
       urlOrPath = urlOrPath.substring(0, httpVersionIndex).trim()
     }
 
-    // Determine full URL
+    // 确定完整 URL
     let url = urlOrPath
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      // Check if Host header exists
       let host = 'localhost'
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim()
-        if (line === '') break
-        if (line.toLowerCase().startsWith('host:')) {
-          host = line.substring(5).trim()
+      // 预扫描 Host 头
+      for (const line of headerLines) {
+        if (line.trim().toLowerCase().startsWith('host:')) {
+          host = line.trim().substring(5).trim()
           break
         }
       }
       url = `http://${host}${urlOrPath.startsWith('/') ? '' : '/'}${urlOrPath}`
     }
 
-    // Validate URL
     try {
       new URL(url)
     } catch {
@@ -487,16 +519,9 @@ function Toolbar() {
       return
     }
 
+    // --- 解析 Headers ---
     const headers = {}
-    let bodyStart = 0
-
-    // Parse headers
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim()
-      if (line === '') {
-        bodyStart = i + 1
-        break
-      }
+    for (const line of headerLines) {
       const colonIndex = line.indexOf(':')
       if (colonIndex !== -1) {
         const key = line.substring(0, colonIndex).trim()
@@ -504,8 +529,6 @@ function Toolbar() {
         if (key && value) headers[key] = value
       }
     }
-
-    const body = lines.slice(bodyStart).join('\n')
 
     try {
       setLoading(true)
@@ -516,22 +539,18 @@ function Toolbar() {
         body,
       })
 
-      // Save response to store for preview
       setHTTPResponse(activeFileId, response)
 
       if (response.error) {
         showToast(response.error, 'error')
       } else {
-        // Show response status in toast
         const durationText = response.duration ? `${response.duration}ms` : ''
         showToast(`Status: ${response.status} ${response.statusCode} ${durationText}`, 'success')
-        // Ensure preview is visible to show response
         if (!isPreviewVisible) {
           togglePreview()
         }
       }
       
-      // Auto-save after receiving response (force save even if not dirty)
       try {
         await saveFile(activeFileId, true)
       } catch (error) {
@@ -539,7 +558,6 @@ function Toolbar() {
       }
     } catch (err) {
       showToast(`Request failed: ${err}`, 'error')
-      // Save error response
       setHTTPResponse(activeFileId, {
         error: `Request failed: ${err}`,
         status: 'Error',
@@ -549,7 +567,6 @@ function Toolbar() {
         duration: 0,
       })
       
-      // Auto-save even on error (force save even if not dirty)
       try {
         await saveFile(activeFileId, true)
       } catch (error) {
@@ -559,7 +576,6 @@ function Toolbar() {
       setLoading(false)
     }
   }
-
   const handleCopy = async () => {
     if (activeFileId && content) {
       const result = await copyToClipboard(content)

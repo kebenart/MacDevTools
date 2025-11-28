@@ -117,14 +117,41 @@ export const useAppStore = create((set, get) => ({
 
   // Refresh current tool's file list
   refreshFileList: async () => {
-    const { currentTool } = get()
+    // 注意这里要解构出 fileSystem 以便获取旧状态
+    const { currentTool, fileSystem } = get()
     try {
       const result = await App.ReadDirectory(currentTool)
       if (result.success) {
+        const oldItems = fileSystem[currentTool] || []
+        const newItems = result.data || []
+
+        // --- 新增：递归合并状态函数 ---
+        // 作用：如果新列表里的文件夹在旧列表里存在且是展开的，则保持展开
+        const mergeItems = (oldList, newList) => {
+          if (!newList) return []
+          return newList.map(newItem => {
+            if (newItem.type === 'folder') {
+              // 根据 ID (相对路径) 查找旧状态
+              const oldItem = oldList?.find(o => o.id === newItem.id)
+              if (oldItem) {
+                newItem.expanded = oldItem.expanded // 关键：恢复展开状态
+                // 递归处理子文件夹
+                if (newItem.children && oldItem.children) {
+                  newItem.children = mergeItems(oldItem.children, newItem.children)
+                }
+              }
+            }
+            return newItem
+          })
+        }
+        // ------------------------------
+
+        const mergedItems = mergeItems(oldItems, newItems)
+
         set((state) => ({
           fileSystem: {
             ...state.fileSystem,
-            [currentTool]: result.data || [],
+            [currentTool]: mergedItems, // 使用合并后的列表
           },
         }))
       }
@@ -556,25 +583,52 @@ export const useAppStore = create((set, get) => ({
 
   renameItem: async (item, newName) => {
     try {
+      // 记录改名前的状态（如果是文件夹且已展开）
+      const wasExpanded = item.type === 'folder' && item.expanded
+
       const result = await App.RenameItem(item.path, newName)
       if (result.success) {
-        // Update tab name if open
+        // 更新 Tab 信息 (保持不变)
         set((state) => ({
           openTabs: state.openTabs.map((tab) =>
             tab.id === item.id
               ? { ...tab, id: result.data.id, name: newName, path: result.data.path }
               : tab
           ),
-          // Update active file id if it was renamed
           activeFileId: state.activeFileId === item.id ? result.data.id : state.activeFileId,
-          // Update file contents cache
           fileContents: Object.fromEntries(
             Object.entries(state.fileContents).map(([key, value]) =>
               key === item.id ? [result.data.id, { ...value, path: result.data.path }] : [key, value]
             )
           ),
         }))
+        
+        // 刷新列表（此时会触发上面的 mergeItems，但因为文件夹改名了ID变了，mergeItems 无法自动恢复该文件夹状态）
         await get().refreshFileList()
+
+        // --- 新增：如果是文件夹且之前是展开的，手动恢复展开 ---
+        if (wasExpanded) {
+           const { currentTool, fileSystem } = get()
+           const newId = result.data.id
+           
+           // 辅助函数：找到新ID并设为展开
+           const expandItem = (items) => {
+               return items.map(i => {
+                   if (i.id === newId) return { ...i, expanded: true }
+                   if (i.children) return { ...i, children: expandItem(i.children) }
+                   return i
+               })
+           }
+           
+           set(state => ({
+               fileSystem: {
+                   ...state.fileSystem,
+                   [currentTool]: expandItem(state.fileSystem[currentTool])
+               }
+           }))
+        }
+        // ----------------------------------------------------
+
         get().showToast('重命名成功', 'success')
       } else {
         get().showToast(result.error, 'error')

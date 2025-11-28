@@ -545,29 +545,29 @@ function FileExplorer() {
               />
               <Folder size={14} style={{ color: 'var(--macos-text-sub)' }} className="flex-shrink-0" />
               {isRenaming ? (
-                <input
-                  type="text"
-                  value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  onBlur={() => confirmRename(item)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      confirmRename(item)
-                    }
-                    if (e.key === 'Escape') {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      cancelRename()
-                    }
-                  }}
-                  className="flex-1 text-sm bg-macos-input border border-macos-accent rounded px-1 outline-none"
-                  style={{ color: 'var(--macos-text-main)' }}
-                  autoFocus
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
+              <input
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onBlur={() => confirmRename(item)}
+                onKeyDown={(e) => {
+                  // [修改] 添加 e.stopPropagation() 阻止事件冒泡
+                  if (e.key === 'Enter') {
+                    e.stopPropagation() // 防止冒泡触发全局快捷键或其他父级点击事件
+                    confirmRename(item)
+                  }
+                  if (e.key === 'Escape') {
+                    e.stopPropagation()
+                    cancelRename()
+                  }
+                }}
+                // [修改] 点击输入框时也阻止冒泡，防止触发选中切换逻辑
+                onClick={(e) => e.stopPropagation()} 
+                className="flex-1 text-sm bg-macos-input border border-macos-accent rounded px-1 outline-none"
+                style={{ color: 'var(--macos-text-main)' }}
+                autoFocus
+              />
+            ) : (
                 <span className="text-sm truncate" style={{ color: 'var(--macos-text-main)' }}>
                   {item.name}
                 </span>
@@ -609,34 +609,28 @@ function FileExplorer() {
           >
             <File size={14} style={{ color: 'var(--macos-text-sub)' }} className="flex-shrink-0" />
             {isRenaming ? (
-              <div className="flex items-center flex-1 min-w-0">
                 <input
                   type="text"
                   value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value)}
                   onBlur={() => confirmRename(item)}
                   onKeyDown={(e) => {
+                    // [修复] 阻止冒泡，防止触发其他组件的事件
                     if (e.key === 'Enter') {
-                      e.preventDefault()
                       e.stopPropagation()
                       confirmRename(item)
                     }
                     if (e.key === 'Escape') {
-                      e.preventDefault()
                       e.stopPropagation()
                       cancelRename()
                     }
                   }}
-                  className="flex-1 min-w-0 text-sm bg-macos-input border border-macos-accent rounded px-1 outline-none"
+                  className="flex-1 text-sm bg-macos-input border border-macos-accent rounded px-1 outline-none"
                   style={{ color: 'var(--macos-text-main)' }}
                   autoFocus
                   onClick={(e) => e.stopPropagation()}
                 />
-                <span className="text-sm flex-shrink-0" style={{ color: 'var(--macos-text-sub)' }}>
-                  {getNameParts(item.name, false).ext}
-                </span>
-              </div>
-            ) : (
+              ) : (
               <>
                 <span className="text-sm truncate">{getNameParts(item.name, false).baseName}</span>
                 {isDirty && <span className="ml-auto text-xs flex-shrink-0">●</span>}

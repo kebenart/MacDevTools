@@ -10,69 +10,81 @@ export function registerHTTPLanguage(monaco) {
     return
   }
   
-  // 检查是否已经注册过，防止重复注册报错
+  // 检查是否已经注册过
   const languages = monaco.languages.getLanguages();
   const isRegistered = languages.some(lang => lang.id === 'http');
 
   if (!isRegistered) {
     // Register language
     monaco.languages.register({ id: 'http' })
+  }
 
-    // Define syntax highlighting
-    monaco.languages.setMonarchTokensProvider('http', {
-      tokenizer: {
-        root: [
-          // HTTP Methods
-          [/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|TRACE|CONNECT)\b/, 'keyword.method'],
+  // [关键修复] 定义语法高亮规则
+  // 将此部分移出 if (!isRegistered) 块，确保在热重载(Hot Reload)时能更新规则
+  monaco.languages.setMonarchTokensProvider('http', {
+    tokenizer: {
+      root: [
+        // HTTP Methods
+        [/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS|TRACE|CONNECT)\b/, 'keyword.method'],
 
-          // HTTP Version
-          [/HTTP\/\d\.\d/, 'keyword.version'],
+        // HTTP Version
+        [/HTTP\/\d\.\d/, 'keyword.version'],
 
-          // Header names
-          [/^[A-Za-z-]+(?=:)/, 'variable.header'],
+        // Header names
+        [/^[A-Za-z-]+(?=:)/, 'variable.header'],
 
-          // URLs
-          [/(https?:\/\/[^\s]+)/, 'string.url'],
-          [/\/[^\s]*/, 'string.path'],
+        // [修复] 完整的注释支持
+        // 1. 支持双斜杠 // 注释
+        [/\/\/.*$/, 'comment'],
+        
+        // 2. 支持 # 注释 (覆盖了 # 和 ##)
+        [/#.*$/, 'comment'],
+        
+        // 3. 支持 /* */ 块注释的开始，跳转到 @comment 状态
+        [/\/\*/, 'comment', '@comment'],
 
-          // JSON in body
-          [/\{/, { token: 'delimiter.bracket', next: '@json' }],
-          [/\[/, { token: 'delimiter.bracket', next: '@json' }],
+        // URLs & Paths
+        [/(https?:\/\/[^\s]+)/, 'string.url'],
+        [/\/[^\s]*/, 'string.path'],
 
-          // Strings
-          [/"([^"\\]|\\.)*$/, 'string.invalid'],
-          [/"/, { token: 'string.quote', next: '@string' }],
+        // JSON in body
+        [/\{/, { token: 'delimiter.bracket', next: '@json' }],
+        [/\[/, { token: 'delimiter.bracket', next: '@json' }],
 
-          // Numbers
-          [/\d+/, 'number'],
+        // Strings
+        [/"([^"\\]|\\.)*$/, 'string.invalid'],
+        [/"/, { token: 'string.quote', next: '@string' }],
 
-          // Comments - support #, ##, and /* */
-          [/#{1,2}.*$/, 'comment'],
-          [/\/\*/, { token: 'comment', next: '@comment' }],
-        ],
+        // Numbers
+        [/\d+/, 'number'],
+      ],
 
-        json: [
-          [/\}/, { token: 'delimiter.bracket', next: '@pop' }],
-          [/\]/, { token: 'delimiter.bracket', next: '@pop' }],
-          [/"([^"\\]|\\.)*"/, 'string'],
-          [/\d+/, 'number'],
-          [/(true|false|null)/, 'keyword'],
-          [/[,:]/, 'delimiter'],
-        ],
+      // [新增] 必须添加 comment 状态来处理块注释的内容和结束
+      comment: [
+        [/[^\/*]+/, 'comment'], // 非注释结束符的内容
+        [/\*\//, 'comment', '@pop'], // 遇到 */ 结束注释，弹出状态
+        [/[\/*]/, 'comment'] // 处理单个的 / 或 *
+      ],
 
-        string: [
-          [/[^\\"]+/, 'string'],
-          [/"/, { token: 'string.quote', next: '@pop' }],
-        ],
+      json: [
+        [/\}/, { token: 'delimiter.bracket', next: '@pop' }],
+        [/\]/, { token: 'delimiter.bracket', next: '@pop' }],
+        [/"([^"\\]|\\.)*"/, 'string'],
+        [/\d+/, 'number'],
+        [/(true|false|null)/, 'keyword'],
+        [/[,:]/, 'delimiter'],
+      ],
 
-        comment: [
-          [/\*\//, { token: 'comment', next: '@pop' }],
-          [/./, 'comment'],
-        ],
-      },
-    })
+      string: [
+        [/[^\\"]+/, 'string'],
+        [/"/, { token: 'string.quote', next: '@pop' }],
+      ],
+    },
+  })
 
-    // Define autocomplete suggestions
+  // Define autocomplete suggestions
+  // 自动补全通常不需要热更新，保留在 if 内防止重复注册
+  if (!isRegistered) {
     monaco.languages.registerCompletionItemProvider('http', {
       provideCompletionItems: (model, position) => {
         const word = model.getWordUntilPosition(position)
@@ -174,7 +186,7 @@ export function registerHTTPLanguage(monaco) {
       { token: 'variable.header', foreground: '9CDCFE' },
       { token: 'string.url', foreground: 'CE9178' },
       { token: 'string.path', foreground: 'CE9178' },
-      { token: 'comment', foreground: '6A9955', fontStyle: 'italic' }, // Green color for comments
+      { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
     ],
     colors: {},
   })
@@ -188,7 +200,7 @@ export function registerHTTPLanguage(monaco) {
       { token: 'variable.header', foreground: '0451A5' },
       { token: 'string.url', foreground: 'A31515' },
       { token: 'string.path', foreground: 'A31515' },
-      { token: 'comment', foreground: '008000', fontStyle: 'italic' }, // Green color for comments
+      { token: 'comment', foreground: '008000', fontStyle: 'italic' },
     ],
     colors: {},
   })
